@@ -1,0 +1,16 @@
+# ── Top-level paths intentionally not tracked ──
+docs/
+etl_jobs/
+backendLogic.docx
+
+# ── OS / editor noise ──
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# ── Frontend working & reference images (the app build uses src/assets/) ──
+/frontend/*.png
+/frontend/*.jpg
+/frontend/*.jpeg
