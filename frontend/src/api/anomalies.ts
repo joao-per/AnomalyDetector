@@ -1,0 +1,44 @@
+// Endpoint functions — one per BFF route. Components use the hooks in hooks.ts.
+import { api } from "./client";
+import type { Anomaly, Signature, Supplier } from "./types";
+
+export interface GenerateEmailResult {
+  emailText: string | null;
+  raw: unknown;
+}
+
+export const anomaliesApi = {
+  list: (status?: string) =>
+    api.get<Anomaly[]>("anomalies/", { status }),
+
+  get: (guid: string) => api.get<Anomaly>(`anomalies/${guid}/`),
+
+  close: (guid: string, comment: string) =>
+    api.post<Anomaly>(`anomalies/${guid}/close/`, { comment }),
+
+  untrain: (guid: string, comment: string) =>
+    api.post<Anomaly>(`anomalies/${guid}/untrain/`, { comment }),
+
+  retrain: (guid: string) => api.post<Anomaly>(`anomalies/${guid}/retrain/`),
+
+  generateEmail: (guid: string, internal: boolean) =>
+    api.post<GenerateEmailResult>(`anomalies/${guid}/generate-email/`, { internal }),
+
+  sendVendorEmail: (guid: string, draft: string, targetEmail: string) =>
+    api.post<{ sent: boolean; raw: unknown }>(`anomalies/${guid}/send-vendor-email/`, {
+      draft,
+      targetEmail,
+    }),
+
+  sendInternalEmail: (guid: string, draft: string, targetEmail: string) =>
+    api.post<{ sent: boolean; raw: unknown }>(`anomalies/${guid}/send-internal-email/`, {
+      draft,
+      targetEmail,
+    }),
+
+  suppliers: () => api.get<Supplier[]>("suppliers/"),
+
+  getSignature: () => api.get<Signature>("me/signature/"),
+  setSignature: (signature: string) =>
+    api.put<Signature>("me/signature/", { signature }),
+};
