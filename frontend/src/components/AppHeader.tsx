@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import logo from "@/assets/stiegl-logo.png";
 import { useI18n } from "@/i18n/i18n";
 import type { Lang } from "@/i18n/translations";
-import { BellIcon, UserIcon } from "./icons";
+import { UserIcon } from "./icons";
 
 export function AppHeader({ userEmail }: { userEmail: string }) {
   const { t } = useI18n();
@@ -20,10 +20,6 @@ export function AppHeader({ userEmail }: { userEmail: string }) {
 
       <div className="flex items-center gap-3">
         <LangSwitch />
-        <CircleButton label={t("header.notifications")}>
-          <BellIcon className="h-5 w-5" />
-          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-brand ring-2 ring-white" />
-        </CircleButton>
         <CircleButton label={userEmail || t("header.account")}>
           <UserIcon className="h-5 w-5" />
         </CircleButton>
