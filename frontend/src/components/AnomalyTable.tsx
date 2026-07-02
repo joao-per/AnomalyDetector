@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Anomaly } from "@/api/types";
-import { compareAnomalieId, dash, isHighCriticality } from "@/lib/format";
+import { compareAnomalieId, dash, formatDate, isHighCriticality } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
 import { StatusBadge } from "./StatusBadge";
@@ -14,7 +14,8 @@ export type SortKey =
   | "category"
   | "status"
   | "besteller"
-  | "criticality";
+  | "criticality"
+  | "createdOn";
 
 export interface SortState {
   key: SortKey;
@@ -71,10 +72,18 @@ const COLUMNS: Column[] = [
     sortValue: (a) => a.criticality ?? -Infinity,
     cellClass: (a) => (isHighCriticality(a.criticalityClass) ? "font-semibold text-brand" : ""),
   },
+  {
+    key: "createdOn",
+    labelKey: "common.createdAt",
+    kind: "num", // sorted by timestamp
+    render: (a) => formatDate(a.createdOn),
+    sortValue: (a) => (a.createdOn ? Date.parse(a.createdOn) : -Infinity),
+    cellClass: () => "tabular-nums",
+  },
 ];
 
 const GRID =
-  "grid grid-cols-[1.1fr_1.4fr_1.3fr_1.1fr_1.2fr_1.3fr_0.9fr] gap-3 items-center";
+  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr] gap-3 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
