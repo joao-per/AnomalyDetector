@@ -80,25 +80,25 @@ export function Untrained() {
   return (
     <PageShell>
       <main className="flex min-h-0 flex-1 flex-col px-8 pb-8 pt-4">
-        {/* Page header */}
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        {/* Page header — on a white card so it stays readable over the backdrop */}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-white/95 px-6 py-4 shadow-lg ring-1 ring-black/5 backdrop-blur-sm">
           <div className="max-w-2xl">
             <h1 className="bg-gradient-to-t from-brand-dark to-[#be0000] bg-clip-text text-2xl font-bold text-transparent">
               {t("untrained.title")}
             </h1>
-            <p className="mt-1 text-sm text-muted">{t("untrained.subtitle")}</p>
+            <p className="mt-1 text-sm text-ink/70">{t("untrained.subtitle")}</p>
           </div>
           <div className="flex items-center gap-3">
             {sorted.length > 0 && (
-              <span className="rounded-full bg-white/90 px-3.5 py-1.5 text-xs font-semibold text-brand-dark shadow-md">
+              <span className="rounded-full bg-red-50 px-3.5 py-1.5 text-xs font-semibold text-brand-dark ring-1 ring-brand/15">
                 {t("untrained.count", { n: sorted.length })}
               </span>
             )}
             <button
               type="button"
               onClick={() => setDir((d) => (d === "desc" ? "asc" : "desc"))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3.5 py-1.5 text-xs
-                         font-semibold text-ink shadow-md transition hover:text-brand"
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3.5 py-1.5 text-xs
+                         font-semibold text-ink ring-1 ring-black/5 transition hover:text-brand"
             >
               <ChevronDownIcon
                 className={`h-3.5 w-3.5 transition-transform duration-300 ${
@@ -110,9 +110,13 @@ export function Untrained() {
           </div>
         </div>
 
-        <div className="mt-1 min-h-[1.25rem] text-sm">
+        <div className="mt-2 min-h-[1.75rem] text-sm">
           {notice && (
-            <span className={notice.kind === "ok" ? "text-emerald-600" : "text-brand-dark"}>
+            <span
+              className={`inline-block rounded-full bg-white/95 px-3.5 py-1 shadow-md ${
+                notice.kind === "ok" ? "text-emerald-600" : "text-brand-dark"
+              }`}
+            >
               {notice.text}
             </span>
           )}
