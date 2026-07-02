@@ -13,6 +13,8 @@ from .services import anomalies as svc
 
 
 class HealthView(APIView):
+    authentication_classes = []  # stays reachable for monitoring even with SSO on
+
     def get(self, request):
         return Response({"status": "ok", "service": "anomaly-bff", "phase": 1})
 
@@ -64,7 +66,11 @@ class AnomalySendVendorEmailView(APIView):
             raise ValidationError({"targetEmail": "Required."})
         return Response(
             svc.send_vendor_email(
-                guid, draft=draft, target_email=target, user=get_user_email(request)
+                guid,
+                draft=draft,
+                target_email=target,
+                user=get_user_email(request),
+                subject=data.get("subject", ""),
             )
         )
 
@@ -78,7 +84,11 @@ class AnomalySendInternalEmailView(APIView):
             raise ValidationError({"targetEmail": "Required."})
         return Response(
             svc.send_internal_email(
-                guid, draft=draft, target_email=target, user=get_user_email(request)
+                guid,
+                draft=draft,
+                target_email=target,
+                user=get_user_email(request),
+                subject=data.get("subject", ""),
             )
         )
 

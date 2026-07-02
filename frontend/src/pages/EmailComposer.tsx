@@ -6,13 +6,12 @@ import { ApiError } from "@/api/client";
 import { useAnomaly, useSetSignature, useSignature } from "@/api/hooks";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
+import { activeUserEmail } from "@/auth/entra";
 import { PageShell } from "@/components/PageShell";
 import { AnomalyCard } from "@/components/AnomalyCard";
 import { SignaturePanel } from "@/components/SignaturePanel";
 import { ArrowLeftIcon, SparklesIcon, UserIcon } from "@/components/icons";
 import { internalTemplate, vendorTemplate } from "@/lib/emailTemplate";
-
-const USER_EMAIL = import.meta.env.VITE_USER_EMAIL ?? "";
 
 type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -87,7 +86,7 @@ export function EmailComposer() {
     setNotice(null);
     try {
       const fn = internal ? anomaliesApi.sendInternalEmail : anomaliesApi.sendVendorEmail;
-      await fn(anomaly.id, fullBody(), to.trim());
+      await fn(anomaly.id, fullBody(), to.trim(), subject.trim());
       setNotice({ kind: "ok", text: t("email.noticeSent") });
     } catch (e) {
       setNotice({ kind: "err", text: errMsg(e, t) });
@@ -142,7 +141,7 @@ export function EmailComposer() {
           <div className="space-y-2.5 px-7 pt-5 text-sm">
             <FieldRow label={t("email.from")}>
               <Avatar />
-              <span className="text-ink/80">{USER_EMAIL || "—"}</span>
+              <span className="text-ink/80">{activeUserEmail() || "—"}</span>
             </FieldRow>
             <FieldRow label={t("email.to")} highlight>
               <Avatar />

@@ -16,6 +16,7 @@ Note on names:
 ANOMALY_ENTITY_SET = "at_anomalyreport1s"
 SUPPLIER_ENTITY_SET = "at_supplierinformations"
 USERDETAILS_ENTITY_SET = "at_userdetailses"
+UNTRAINED_ENTITY_SET = "at_abtrainierteanomaliens"
 
 # ── Anomaly Report (at_anomalyreport1) ───────────────────────────────────────
 ANOMALY = {
@@ -26,6 +27,7 @@ ANOMALY = {
     "status_change_ts": "at_timestampstatuschange",
     # classification / scoring
     "anomaly_type": "at_anomalytype",
+    "process_reference": "at_processreference",  # Rechnung / Wareneingang / Bestellkopf / Bestellposition
     "match_class": "at_matchclass",
     "match_explanation": "at_matchexplanation",
     "criticality": "at_criticality",        # int
@@ -82,6 +84,25 @@ SUPPLIER = {
     "classification": "at_classification",     # ABC
     "employee_email": "at_employeeemail",
     "buyer_name": "cr062_einkaufername",
+}
+
+# ── Untrained anomalies / ML training feedback (at_abtrainierteanomalien) ────
+# Confirmed against live EntityDefinitions + sample rows (2026-07-02). The ML
+# pipeline reads this table to suppress known-good patterns; "untrain" appends a
+# record here, "retrain" removes it again. Note: rows written by the original
+# flow carry the vendor NAME in at_lieferantennummer — we keep that convention.
+UNTRAINED = {
+    "guid": "at_abtrainierteanomalienid",
+    "anomalie_id": "at_anomalieid",          # business id, e.g. "26_2470"
+    "anomaly_type": "at_anomalietyp",
+    "article_category": "at_artikelgruppe",
+    "article_name": "at_artikelname",
+    "article_id": "at_artikelnummer",
+    "vendor_name": "at_lieferantenname",
+    "vendor_number": "at_lieferantennummer",
+    "process_ref": "at_prozessbezug",        # mirrors the anomaly's match class
+    "reasoning": "at_reasoning",
+    "created_at": "cr062_erstelldatum",
 }
 
 # ── Anomaly workflow status values (text, confirmed: sample row = "new") ──────

@@ -31,6 +31,12 @@ const de = {
   "header.notifications": "Benachrichtigungen",
   "header.account": "Konto",
   "header.home": "Zur Übersicht",
+  "header.signOut": "Abmelden ({email})",
+
+  // ── Section nav ──────────────────────────────────────────────────
+  "nav.sections": "Bereiche",
+  "nav.dashboard": "Übersicht",
+  "nav.untrained": "Trainingsarchiv",
 
   // ── Status rail (filter cards) ───────────────────────────────────
   "statusRail.all": "Alle",
@@ -82,6 +88,24 @@ const de = {
   "card.resolvedTitle": "Erledigt",
   "card.ofTotal": "{pct}% gesamt",
   "card.suppliersAffected": "{n} Lieferanten",
+
+  // ── Training archive (untrained anomalies) ──────────────────────
+  "untrained.title": "Trainingsarchiv",
+  "untrained.subtitle":
+    "Diese Anomalien wurden dem Modell abtrainiert — es meldet solche Muster nicht mehr. Mit „Neu trainieren“ fließen sie wieder ins Training ein.",
+  "untrained.count": "{n} abtrainiert",
+  "untrained.sortNewest": "Neueste zuerst",
+  "untrained.sortOldest": "Älteste zuerst",
+  "untrained.reason": "Warum abtrainiert?",
+  "untrained.noReason": "Keine Begründung hinterlegt.",
+  "untrained.untrainedOn": "Abtrainiert am {date}",
+  "untrained.retrain": "Neu trainieren",
+  "untrained.retraining": "Wird trainiert…",
+  "untrained.retrained": "{id} ist zurück im Training.",
+  "untrained.emptyTitle": "Nichts abtrainiert",
+  "untrained.emptyHint":
+    "Das Modell lernt derzeit aus jeder Anomalie. Abgebrochene Fälle erscheinen hier.",
+  "untrained.error": "Fehler beim Laden: {error}",
 
   // ── Signature panel ──────────────────────────────────────────────
   "signature.title": "Signatur",
@@ -143,6 +167,12 @@ const en: Record<TranslationKey, string> = {
   "header.notifications": "Notifications",
   "header.account": "Account",
   "header.home": "Back to overview",
+  "header.signOut": "Sign out ({email})",
+
+  // ── Section nav ──────────────────────────────────────────────────
+  "nav.sections": "Sections",
+  "nav.dashboard": "Overview",
+  "nav.untrained": "Training archive",
 
   // ── Status rail (filter cards) ───────────────────────────────────
   "statusRail.all": "All",
@@ -194,6 +224,24 @@ const en: Record<TranslationKey, string> = {
   "card.resolvedTitle": "Resolved",
   "card.ofTotal": "{pct}% of total",
   "card.suppliersAffected": "{n} suppliers",
+
+  // ── Training archive (untrained anomalies) ──────────────────────
+  "untrained.title": "Training archive",
+  "untrained.subtitle":
+    "These anomalies were untrained from the model — it no longer flags such patterns. “Retrain” feeds them back into training.",
+  "untrained.count": "{n} untrained",
+  "untrained.sortNewest": "Newest first",
+  "untrained.sortOldest": "Oldest first",
+  "untrained.reason": "Why untrained?",
+  "untrained.noReason": "No reason recorded.",
+  "untrained.untrainedOn": "Untrained on {date}",
+  "untrained.retrain": "Retrain",
+  "untrained.retraining": "Retraining…",
+  "untrained.retrained": "{id} is back in training.",
+  "untrained.emptyTitle": "Nothing untrained",
+  "untrained.emptyHint":
+    "The model is currently learning from every anomaly. Cancelled cases show up here.",
+  "untrained.error": "Error loading: {error}",
 
   // ── Signature panel ──────────────────────────────────────────────
   "signature.title": "Signature",

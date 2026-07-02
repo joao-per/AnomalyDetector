@@ -19,6 +19,7 @@ def map_anomaly(record: dict) -> dict:
         "statusChangedAt": g(a["status_change_ts"]),
         # classification / scoring
         "anomalyType": g(a["anomaly_type"]),
+        "processReference": g(a["process_reference"]),
         "matchClass": g(a["match_class"]),
         "matchExplanation": g(a["match_explanation"]),
         "criticality": g(a["criticality"]),
@@ -64,7 +65,7 @@ def anomaly_select() -> list[str]:
     a = fm.ANOMALY
     keys = [
         "guid", "anomalie_id", "status", "status_change_ts",
-        "anomaly_type", "match_class", "match_explanation",
+        "anomaly_type", "process_reference", "match_class", "match_explanation",
         "criticality", "criticality_class", "score",
         "description1", "description2", "feature_json",
         "plot_standard_url", "plot_enhanced_url", "plot_categorical_url",

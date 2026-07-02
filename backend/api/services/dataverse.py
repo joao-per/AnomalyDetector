@@ -132,6 +132,12 @@ class DataverseClient:
         _raise_for_status(resp)
         return resp.json() if resp.content else None
 
+    def delete(self, entity_set: str, guid: str) -> None:
+        resp = requests.delete(
+            f"{self._api}/{entity_set}({guid})", headers=self._headers(), timeout=60
+        )
+        _raise_for_status(resp)
+
     def create(self, entity_set: str, data: dict) -> dict | None:
         resp = requests.post(
             f"{self._api}/{entity_set}",

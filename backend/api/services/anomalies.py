@@ -16,7 +16,8 @@ from .. import field_maps as fm
 from .. import serializers
 from ..exceptions import FeatureNotEnabled
 from .dataverse import dataverse
-from .flows import run_flow
+from .flows import FlowError, run_flow
+from .graph import graph
 
 
 def _require_email_enabled() -> None:
@@ -81,11 +82,11 @@ def close_anomaly(guid: str, *, comment: str, user: str) -> dict:
 def untrain_anomaly(guid: str, *, comment: str, user: str) -> dict:
     """'Untrain' → status 'abgebrochen'. Only allowed from 'new'; comment required.
 
-    NOTE: a Dataverse table `at_abtrainierteanomaliens` ("untrained anomalies")
-    exists, so the ORIGINAL SetStatusAbgebrochen flow probably also writes the
-    record there as ML training feedback. The Phase-1 direct-patch path only sets
-    the status — to preserve the feedback, configure SET_STATUS_CANCELLED_FLOW_URL
-    (so this calls the real flow) or replicate the insert here. See README / OPEN.
+    Besides the status change, this records the anomaly in the
+    `at_abtrainierteanomaliens` table — the ML training feedback the pipeline
+    uses to stop flagging this pattern (mirroring the original
+    SetStatusAbgebrochen flow). When SET_STATUS_CANCELLED_FLOW_URL is set the
+    flow performs that insert itself; on the direct-patch path we do it here.
     """
     return _change_status(
         guid,
@@ -95,14 +96,74 @@ def untrain_anomaly(guid: str, *, comment: str, user: str) -> dict:
         require_status=fm.STATUS_NEW,
         flow_url=settings.SET_STATUS_CANCELLED_FLOW_URL,
         flow_name="SetStatusAbgebrochen",
+        on_direct=lambda record: _record_training_feedback(
+            record, comment=comment, user=user
+        ),
     )
 
 
 def retrain_anomaly(guid: str) -> dict:
-    """'Retrain' → status back to 'new' (no guard, no comment)."""
+    """'Retrain' → status back to 'new', and the training feedback is withdrawn
+    (matching `at_abtrainierteanomaliens` rows are deleted) so the ML pipeline
+    starts flagging this pattern again."""
     a = fm.ANOMALY
+    record = _retrieve(guid)
+    _remove_training_feedback(record.get(a["anomalie_id"]))
     dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["status"]: fm.STATUS_NEW})
     return get_anomaly(guid)
+
+
+# The anomaly stores the process as a German label, but the feedback table (and
+# the ML pipeline reading it) uses the SQL-layer process names — confirmed from
+# rows the original flow wrote (invoice / goods_delivery / purchase_header).
+_PROCESS_REF = {
+    "rechnung": "invoice",
+    "wareneingang": "goods_delivery",
+    "bestellkopf": "purchase_header",
+    "bestellposition": "purchase_line",
+}
+
+
+def _record_training_feedback(record: dict, *, comment: str, user: str) -> None:
+    """Append the anomaly to the untrained-anomalies table (ML training feedback)."""
+    a, u = fm.ANOMALY, fm.UNTRAINED
+    vendor = record.get(a["vendor_name"]) or "Unknown Vendor"
+    process = (record.get(a["process_reference"]) or "").strip()
+    process = _PROCESS_REF.get(process.lower(), process)
+    dataverse.create(
+        fm.UNTRAINED_ENTITY_SET,
+        {
+            u["anomalie_id"]: record.get(a["anomalie_id"]),
+            u["anomaly_type"]: record.get(a["anomaly_type"]),
+            u["article_category"]: record.get(a["article_category"]),
+            u["article_name"]: record.get(a["article_name"]),
+            u["article_id"]: record.get(a["article_id"]),
+            u["vendor_name"]: vendor,
+            # rows written by the original flow carry the vendor NAME here when
+            # no supplier number exists — keep that convention for the pipeline
+            u["vendor_number"]: record.get(a["supplier_id"]) or vendor,
+            u["process_ref"]: process,
+            u["reasoning"]: (
+                "Die Anomalie ist Teil der abtrainierten Anomalien, weil: "
+                f"{comment.strip()} (abtrainiert von {user})"
+            ),
+            u["created_at"]: _now_iso(),
+        },
+    )
+
+
+def _remove_training_feedback(anomalie_id: str | None) -> None:
+    """Delete all feedback rows for a business id (idempotent — 0 rows is fine)."""
+    if not anomalie_id:
+        return
+    u = fm.UNTRAINED
+    rows = dataverse.list(
+        fm.UNTRAINED_ENTITY_SET,
+        select=[u["guid"]],
+        filter=f"{u['anomalie_id']} eq '{_esc(anomalie_id)}'",
+    )
+    for row in rows:
+        dataverse.delete(fm.UNTRAINED_ENTITY_SET, row[u["guid"]])
 
 
 def _change_status(
@@ -114,6 +175,7 @@ def _change_status(
     require_status: str,
     flow_url: str,
     flow_name: str,
+    on_direct=None,
 ) -> dict:
     if not comment or not comment.strip():
         raise ValidationError({"comment": "A comment is required for this action."})
@@ -151,6 +213,10 @@ def _change_status(
                 a["status_change_ts"]: _now_iso(),
             },
         )
+        # Extra side-effects the original flow performed (e.g. the untrain
+        # training-feedback insert) — only needed on the direct path.
+        if on_direct:
+            on_direct(record)
     return get_anomaly(guid)
 
 
@@ -174,36 +240,87 @@ def generate_email(guid: str, *, internal: bool) -> dict:
     return {"emailText": result.get("emailtextresponse"), "raw": result}
 
 
-# ── Sending emails (save draft to Dataverse, then run the send flow) ─────────
-def send_vendor_email(guid: str, *, draft: str, target_email: str, user: str) -> dict:
+# ── Sending emails (save draft to Dataverse, then flow OR Graph) ─────────────
+def send_vendor_email(
+    guid: str, *, draft: str, target_email: str, user: str, subject: str = ""
+) -> dict:
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
     dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_vendor"]: draft})
-    result = run_flow(
-        settings.EXTERNAL_EMAIL_FLOW_URL,
-        {"anomalieId": record.get(a["anomalie_id"]), "user": user, "zielEmail": target_email},
-        name="ExternalEmailFlow",
+    return _dispatch_email(
+        record,
+        draft=draft,
+        target_email=target_email,
+        user=user,
+        subject=subject,
+        flow_url=settings.EXTERNAL_EMAIL_FLOW_URL,
+        flow_name="ExternalEmailFlow",
+        flow_payload={
+            "anomalieId": record.get(a["anomalie_id"]),
+            "user": user,
+            "zielEmail": target_email,
+        },
     )
-    return {"sent": True, "raw": result}
 
 
-def send_internal_email(guid: str, *, draft: str, target_email: str, user: str) -> dict:
+def send_internal_email(
+    guid: str, *, draft: str, target_email: str, user: str, subject: str = ""
+) -> dict:
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
     dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_internal"]: draft})
-    result = run_flow(
-        settings.INTERNAL_EMAIL_FLOW_URL,
-        {
+    return _dispatch_email(
+        record,
+        draft=draft,
+        target_email=target_email,
+        user=user,
+        subject=subject,
+        flow_url=settings.INTERNAL_EMAIL_FLOW_URL,
+        flow_name="InternalEmailFlow",
+        flow_payload={
             "anomalieId": record.get(a["anomalie_id"]),
             "user": user,
             "zielEmail": target_email,
             "bestellerEmail": record.get(a["besteller_email"]),
         },
-        name="InternalEmailFlow",
     )
-    return {"sent": True, "raw": result}
+
+
+def _dispatch_email(
+    record: dict,
+    *,
+    draft: str,
+    target_email: str,
+    user: str,
+    subject: str,
+    flow_url: str,
+    flow_name: str,
+    flow_payload: dict,
+) -> dict:
+    """Send via the Power Automate flow when its URL is configured, otherwise
+    fall back to Microsoft Graph sendMail (GRAPH_SENDER_UPN mailbox)."""
+    if flow_url:
+        result = run_flow(flow_url, flow_payload, name=flow_name)
+        return {"sent": True, "via": "flow", "raw": result}
+
+    if settings.GRAPH_SENDER_UPN:
+        a = fm.ANOMALY
+        graph.send_mail(
+            sender=settings.GRAPH_SENDER_UPN,
+            to=[target_email],
+            subject=subject.strip() or f"Anomalie {record.get(a['anomalie_id'])}",
+            body=draft,
+            reply_to=user,
+        )
+        return {"sent": True, "via": "graph", "raw": None}
+
+    raise FlowError(
+        f"No send path configured: set the '{flow_name}' flow URL or "
+        "GRAPH_SENDER_UPN (Graph sendMail fallback).",
+        status=503,
+    )
 
 
 # ── Suppliers ────────────────────────────────────────────────────────────────

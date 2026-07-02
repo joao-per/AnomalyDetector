@@ -40,6 +40,12 @@ The frontend needs the backend running, and the backend needs a valid
 ## Notes
 
 - Secrets live only in `.env` files (gitignored) — never commit them.
-- Auth is a Phase-1 `X-User-Email` stub, to be replaced by Entra SSO.
-- Email generate/send actions are gated off (`EMAIL_ACTIONS_ENABLED=false`)
-  until the Power Automate approach is finalized.
+- Auth: Entra ID SSO (MSAL in the frontend, token validation in the backend) is
+  activated by the `ENTRA_*` / `VITE_ENTRA_*` env vars; without them the app
+  falls back to the Phase-1 `X-User-Email` header — local dev only.
+- Emails send through a Power Automate flow when its URL is configured,
+  otherwise through Microsoft Graph (`GRAPH_SENDER_UPN` + Mail.Send permission).
+  `EMAIL_ACTIONS_ENABLED=false` is the kill switch (endpoints return 501).
+- Untraining an anomaly records it as ML training feedback in Dataverse
+  (`at_abtrainierteanomaliens`); retraining withdraws that record. The
+  Training-archive view (`/untrained`) lists all untrained cases.

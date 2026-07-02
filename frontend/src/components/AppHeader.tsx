@@ -1,14 +1,14 @@
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import logo from "@/assets/stiegl-logo.png";
+import { entraEnabled, signOut } from "@/auth/entra";
 import { useI18n } from "@/i18n/i18n";
-import type { Lang } from "@/i18n/translations";
+import type { Lang, TranslationKey } from "@/i18n/translations";
 import { UserIcon } from "./icons";
 
 export function AppHeader({ userEmail }: { userEmail: string }) {
   const { t } = useI18n();
   return (
-    <header className="flex items-center justify-between px-8 pt-6">
+    <header className="relative flex items-center justify-between px-8 pt-6">
       <Link to="/" aria-label={t("header.home")} className="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
         <img
           src={logo}
@@ -18,13 +18,43 @@ export function AppHeader({ userEmail }: { userEmail: string }) {
         />
       </Link>
 
+      <SectionNav />
+
       <div className="flex items-center gap-3">
         <LangSwitch />
-        <CircleButton label={userEmail || t("header.account")}>
-          <UserIcon className="h-5 w-5" />
-        </CircleButton>
+        <UserButton email={userEmail} />
       </div>
     </header>
+  );
+}
+
+/** Center nav between the two working views: dashboard + training archive. */
+function SectionNav() {
+  const { t } = useI18n();
+  const items: { to: string; end?: boolean; labelKey: TranslationKey }[] = [
+    { to: "/", end: true, labelKey: "nav.dashboard" },
+    { to: "/untrained", labelKey: "nav.untrained" },
+  ];
+  return (
+    <nav
+      aria-label={t("nav.sections")}
+      className="absolute left-1/2 flex -translate-x-1/2 items-center rounded-full bg-white/90 p-1 shadow-md"
+    >
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) =>
+            `rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+              isActive ? "bg-brand text-white shadow-sm" : "text-muted hover:text-ink"
+            }`
+          }
+        >
+          {t(item.labelKey)}
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 
@@ -50,22 +80,29 @@ function LangSwitch() {
   );
 }
 
-function CircleButton({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
+/** Account chip. With Entra SSO active it doubles as the sign-out button. */
+function UserButton({ email }: { email: string }) {
+  const { t } = useI18n();
+  const label = entraEnabled
+    ? t("header.signOut", { email: email || t("header.account") })
+    : email || t("header.account");
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
+      onClick={entraEnabled ? signOut : undefined}
       className="relative grid h-12 w-12 place-items-center rounded-full bg-white text-ink shadow-md
                  transition hover:shadow-lg hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
-      {children}
+      {email ? (
+        <span className="text-sm font-bold uppercase">{email[0]}</span>
+      ) : (
+        <UserIcon className="h-5 w-5" />
+      )}
+      {entraEnabled && (
+        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+      )}
     </button>
   );
 }

@@ -1,22 +1,118 @@
 """
-Phase-1 user identity.
+User identity — Entra ID SSO with a Phase-1 fallback.
 
-Several actions need the acting user's email (the canvas app used `User().Email`):
-the signature key, the 'user' argument to the status-change flows, and the sender
-of generated emails. Until Entra SSO is wired, the frontend sends it in the
-`X-User-Email` header, with an optional local-dev fallback.
+Two modes, switched by ENTRA_AUTH_ENABLED:
 
-PRODUCTION TODO: replace this with real auth — validate an Entra ID access token
-(Authorization: Bearer ...) via MSAL/JWKS and read the verified email/UPN claim.
-Do not trust a client-supplied header in production.
+- **Entra SSO (production).** The frontend signs the user in with MSAL and sends
+  an Entra-issued access token as `Authorization: Bearer …`. We validate the
+  signature against the tenant's JWKS, plus issuer/audience/expiry, and take the
+  acting user from the token's preferred_username/email/upn claim. Enforced on
+  every endpoint via the `EntraAuthentication` DRF class (see settings).
+
+- **Phase-1 fallback (local dev).** The acting user's email arrives in the
+  `X-User-Email` header (or DEV_DEFAULT_USER_EMAIL). Not secure — a client can
+  claim any identity — so never run production with ENTRA_AUTH_ENABLED=false.
 """
 from __future__ import annotations
 
+import threading
+
+import jwt
 from django.conf import settings
-from rest_framework.exceptions import PermissionDenied
+from jwt import PyJWKClient
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
+
+_jwks_lock = threading.Lock()
+_jwks_client: PyJWKClient | None = None
+
+
+def _get_jwks_client() -> PyJWKClient:
+    """Tenant JWKS client, shared across requests (PyJWKClient caches the keys)."""
+    global _jwks_client
+    with _jwks_lock:
+        if _jwks_client is None:
+            _jwks_client = PyJWKClient(
+                "https://login.microsoftonline.com/"
+                f"{settings.ENTRA_TENANT_ID}/discovery/v2.0/keys",
+                cache_keys=True,
+            )
+        return _jwks_client
+
+
+def _validate_bearer(request) -> str:
+    """Validate the Entra access token and return the user's email/UPN."""
+    if not settings.ENTRA_API_AUDIENCE:
+        raise AuthenticationFailed(
+            "ENTRA_AUTH_ENABLED is on but ENTRA_API_AUDIENCE is not configured."
+        )
+    header = request.headers.get("Authorization") or ""
+    if not header.startswith("Bearer "):
+        raise AuthenticationFailed(
+            "Missing Bearer token — sign in via Entra ID (SSO is enabled)."
+        )
+    token = header[len("Bearer "):].strip()
+
+    try:
+        signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
+        claims = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=settings.ENTRA_API_AUDIENCE,
+            options={"require": ["exp", "iss", "aud"]},
+        )
+    except jwt.PyJWTError as exc:
+        raise AuthenticationFailed(f"Invalid Entra token: {exc}") from exc
+
+    tenant = settings.ENTRA_TENANT_ID
+    allowed_issuers = {
+        f"https://login.microsoftonline.com/{tenant}/v2.0",  # v2 tokens
+        f"https://sts.windows.net/{tenant}/",                # v1 tokens
+    }
+    if claims.get("iss") not in allowed_issuers:
+        raise AuthenticationFailed("Token was issued by an unexpected tenant.")
+
+    email = (
+        claims.get("preferred_username") or claims.get("email") or claims.get("upn")
+    )
+    if not email:
+        raise AuthenticationFailed("Token carries no email/UPN claim.")
+    return str(email).strip()
+
+
+class _ApiUser:
+    """Minimal request.user for DRF — we have no Django user model for SSO users."""
+
+    is_authenticated = True
+
+    def __init__(self, email: str) -> None:
+        self.email = email
+        self.username = email
+
+    def __str__(self) -> str:
+        return self.email
+
+
+class EntraAuthentication(BaseAuthentication):
+    """DRF authentication class: enforces a valid Entra token on every request
+    while ENTRA_AUTH_ENABLED; a no-op in Phase-1 fallback mode."""
+
+    def authenticate(self, request):
+        if not settings.ENTRA_AUTH_ENABLED:
+            return None
+        return (_ApiUser(_validate_bearer(request)), None)
+
+    def authenticate_header(self, request):  # → 401 (not 403) on failure
+        return "Bearer"
 
 
 def get_user_email(request) -> str:
+    """The acting user's email for signature keys, flow calls and email sending."""
+    if settings.ENTRA_AUTH_ENABLED:
+        email = getattr(getattr(request, "user", None), "email", "")
+        return email or _validate_bearer(request)
+
     email = request.headers.get("X-User-Email") or settings.DEV_DEFAULT_USER_EMAIL
     if not email:
         raise PermissionDenied(

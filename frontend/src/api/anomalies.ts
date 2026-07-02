@@ -24,16 +24,18 @@ export const anomaliesApi = {
   generateEmail: (guid: string, internal: boolean) =>
     api.post<GenerateEmailResult>(`anomalies/${guid}/generate-email/`, { internal }),
 
-  sendVendorEmail: (guid: string, draft: string, targetEmail: string) =>
+  sendVendorEmail: (guid: string, draft: string, targetEmail: string, subject?: string) =>
     api.post<{ sent: boolean; raw: unknown }>(`anomalies/${guid}/send-vendor-email/`, {
       draft,
       targetEmail,
+      subject,
     }),
 
-  sendInternalEmail: (guid: string, draft: string, targetEmail: string) =>
+  sendInternalEmail: (guid: string, draft: string, targetEmail: string, subject?: string) =>
     api.post<{ sent: boolean; raw: unknown }>(`anomalies/${guid}/send-internal-email/`, {
       draft,
       targetEmail,
+      subject,
     }),
 
   suppliers: () => api.get<Supplier[]>("suppliers/"),

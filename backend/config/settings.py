@@ -89,7 +89,9 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "api.exceptions.api_exception_handler",
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    # Enforces a valid Entra Bearer token on every endpoint while
+    # ENTRA_AUTH_ENABLED=true; a no-op in Phase-1 fallback mode.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["api.auth.EntraAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": [],
 }
 
@@ -104,14 +106,34 @@ DATAVERSE_CLIENT_ID = env("DATAVERSE_CLIENT_ID")
 DATAVERSE_CLIENT_SECRET = env("DATAVERSE_CLIENT_SECRET")
 
 # ── Power Automate flow URLs ─────────────────────────────────────────────────
-# Email actions are deferred (the Power Automate flows are Power Apps-invoked, not
-# plain HTTP). Until the approach is decided, the generate/send endpoints return 501.
-EMAIL_ACTIONS_ENABLED = env_bool("EMAIL_ACTIONS_ENABLED", False)
+# Draft generation uses the existing HTTP-trigger flow. For SENDING, a flow URL
+# takes precedence; if none is set, the backend falls back to Microsoft Graph
+# sendMail (see GRAPH_SENDER_UPN below). EMAIL_ACTIONS_ENABLED=false turns the
+# generate/send endpoints into HTTP 501 (kill switch).
+EMAIL_ACTIONS_ENABLED = env_bool("EMAIL_ACTIONS_ENABLED", True)
 GENERATE_EMAIL_FLOW_URL = env("GENERATE_EMAIL_FLOW_URL")
 EXTERNAL_EMAIL_FLOW_URL = env("EXTERNAL_EMAIL_FLOW_URL")
 INTERNAL_EMAIL_FLOW_URL = env("INTERNAL_EMAIL_FLOW_URL")
 SET_STATUS_IN_PROGRESS_FLOW_URL = env("SET_STATUS_IN_PROGRESS_FLOW_URL")
 SET_STATUS_CANCELLED_FLOW_URL = env("SET_STATUS_CANCELLED_FLOW_URL")
 
-# ── Auth (Phase 1 stub) ──────────────────────────────────────────────────────
+# ── Microsoft Graph (email sending fallback) ─────────────────────────────────
+# Mailbox the BFF sends from when no send-flow URL is configured. Requires the
+# app registration to hold the *application* permission Mail.Send (admin
+# consented). Defaults to the Dataverse app registration's credentials.
+GRAPH_SENDER_UPN = env("GRAPH_SENDER_UPN")
+GRAPH_CLIENT_ID = env("GRAPH_CLIENT_ID", DATAVERSE_CLIENT_ID)
+GRAPH_CLIENT_SECRET = env("GRAPH_CLIENT_SECRET", DATAVERSE_CLIENT_SECRET)
+GRAPH_TOKEN_URL = env("GRAPH_TOKEN_URL", DATAVERSE_TOKEN_URL)
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+# Entra ID SSO (Phase 2): the SPA signs users in with MSAL and calls this API
+# with a Bearer token, validated in api/auth.py. While disabled, the Phase-1
+# X-User-Email header fallback is used — local dev only, never production.
+ENTRA_AUTH_ENABLED = env_bool("ENTRA_AUTH_ENABLED", False)
+ENTRA_TENANT_ID = env("ENTRA_TENANT_ID", "dfe9186e-bd11-4b76-9d24-0dddd4a395c9")
+# Audience of the API app registration the SPA requests tokens for —
+# "api://<api-client-id>" (or the bare client id, depending on the app manifest).
+ENTRA_API_AUDIENCE = env("ENTRA_API_AUDIENCE")
+# Phase-1 fallback identity for local dev.
 DEV_DEFAULT_USER_EMAIL = env("DEV_DEFAULT_USER_EMAIL")

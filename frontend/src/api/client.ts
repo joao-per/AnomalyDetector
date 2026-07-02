@@ -1,5 +1,7 @@
 // Tiny typed fetch wrapper around the Django BFF.
-// Phase 1: identifies the user via the X-User-Email header (becomes Entra SSO later).
+// With Entra SSO configured it sends `Authorization: Bearer <token>`; otherwise
+// it falls back to the Phase-1 X-User-Email header (local dev).
+import { entraEnabled, getAccessToken } from "@/auth/entra";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
 const USER_EMAIL = import.meta.env.VITE_USER_EMAIL ?? "";
@@ -34,10 +36,13 @@ async function request<T>(
   path: string,
   opts: { query?: Record<string, string | undefined>; body?: unknown } = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "X-User-Email": USER_EMAIL,
-  };
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (entraEnabled) {
+    const token = await getAccessToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    headers["X-User-Email"] = USER_EMAIL;
+  }
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
   let res: Response;
@@ -56,9 +61,15 @@ async function request<T>(
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
-    if (data && typeof data === "object" && "detail" in data) {
-      const detail = (data as Record<string, unknown>).detail;
-      if (typeof detail === "string" && detail) message = detail;
+    if (data && typeof data === "object") {
+      // DRF errors carry "detail"; our Dataverse/flow/Graph errors carry "message".
+      for (const key of ["detail", "message"] as const) {
+        const value = (data as Record<string, unknown>)[key];
+        if (typeof value === "string" && value) {
+          message = value;
+          break;
+        }
+      }
     }
     throw new ApiError(res.status, message, data);
   }

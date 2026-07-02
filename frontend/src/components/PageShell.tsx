@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import beer from "@/assets/beer.png";
 import foam from "@/assets/foam.png";
+import { activeUserEmail } from "@/auth/entra";
 import { AppHeader } from "./AppHeader";
-
-const USER_EMAIL = import.meta.env.VITE_USER_EMAIL ?? "";
 
 /** Shared frame: brand gradient + spilled-beer decoration (left) + header. */
 export function PageShell({ children }: { children: ReactNode }) {
@@ -26,7 +25,7 @@ export function PageShell({ children }: { children: ReactNode }) {
         className="pointer-events-none absolute left-[-25px] top-[60px] z-0 w-[200px] -scale-x-100 rotate-[34deg] select-none drop-shadow-xl"
       />
       <div className="relative z-10 flex h-screen flex-col">
-        <AppHeader userEmail={USER_EMAIL} />
+        <AppHeader userEmail={activeUserEmail()} />
         {children}
       </div>
     </div>

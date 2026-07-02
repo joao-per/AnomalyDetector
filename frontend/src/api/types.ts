@@ -15,6 +15,7 @@ export interface Anomaly {
 
   // classification / scoring
   anomalyType: string | null;
+  processReference: string | null; // Rechnung / Wareneingang / Bestellkopf / Bestellposition
   matchClass: string | null;
   matchExplanation: string | null;
   criticality: number | null; // numeric level (e.g. 2)

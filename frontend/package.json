@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@azure/msal-browser": "^5.16.0",
     "@fontsource/inter": "^5.1.0",
     "@fontsource/poppins": "^5.1.0",
     "@tanstack/react-query": "^5.62.0",
