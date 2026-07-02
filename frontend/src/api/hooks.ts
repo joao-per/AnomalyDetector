@@ -6,13 +6,25 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { anomaliesApi } from "./anomalies";
+import { authApi } from "./auth";
 
 const keys = {
   anomalies: (status?: string) => ["anomalies", status ?? "all"] as const,
   anomaly: (guid: string) => ["anomaly", guid] as const,
   suppliers: ["suppliers"] as const,
   signature: ["signature"] as const,
+  me: ["me"] as const,
 };
+
+/** The signed-in user (Django session or Entra). 401 → isError, no retries. */
+export function useMe() {
+  return useQuery({
+    queryKey: keys.me,
+    queryFn: authApi.me,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+}
 
 export function useAnomalies(status?: string) {
   return useQuery({

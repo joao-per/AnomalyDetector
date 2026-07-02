@@ -5,6 +5,11 @@ from . import views
 urlpatterns = [
     path("health/", views.HealthView.as_view()),
 
+    # Session auth (Django login)
+    path("auth/login/", views.LoginView.as_view()),
+    path("auth/logout/", views.LogoutView.as_view()),
+    path("auth/me/", views.MeView.as_view()),
+
     # Anomalies
     path("anomalies/", views.AnomalyListView.as_view()),
     path("anomalies/<str:guid>/", views.AnomalyDetailView.as_view()),

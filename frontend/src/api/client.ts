@@ -50,6 +50,7 @@ async function request<T>(
     res = await fetch(buildUrl(path, opts.query), {
       method,
       headers,
+      credentials: "include", // Django session cookie
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
   } catch (e) {

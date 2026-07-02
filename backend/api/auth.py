@@ -20,8 +20,12 @@ import threading
 import jwt
 from django.conf import settings
 from jwt import PyJWKClient
-from rest_framework.authentication import BaseAuthentication
+from rest_framework.authentication import (
+    BaseAuthentication,
+    SessionAuthentication as DRFSessionAuthentication,
+)
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
+from rest_framework.permissions import BasePermission
 
 _jwks_lock = threading.Lock()
 _jwks_client: PyJWKClient | None = None
@@ -107,16 +111,47 @@ class EntraAuthentication(BaseAuthentication):
         return "Bearer"
 
 
+class SessionAuthentication(DRFSessionAuthentication):
+    """Django login-session auth for the SPA (see LoginView/LogoutView).
+
+    CSRF enforcement is skipped: the session cookie is SameSite=Lax, so
+    cross-site POSTs never carry it in the first place, and the SPA talks to
+    this API from a different origin (port) without a CSRF token exchange."""
+
+    def enforce_csrf(self, request):
+        return
+
+
+class LoginRequired(BasePermission):
+    """Locks every endpoint behind a signed-in user (login session or Entra
+    token) while LOGIN_REQUIRED is on. Health + auth endpoints opt out via
+    `permission_classes = []`."""
+
+    message = "Sign in required."
+
+    def has_permission(self, request, view):
+        if not settings.LOGIN_REQUIRED:
+            return True
+        user = getattr(request, "user", None)
+        return bool(user and user.is_authenticated)
+
+
 def get_user_email(request) -> str:
     """The acting user's email for signature keys, flow calls and email sending."""
     if settings.ENTRA_AUTH_ENABLED:
         email = getattr(getattr(request, "user", None), "email", "")
         return email or _validate_bearer(request)
 
+    user = getattr(request, "user", None)
+    if user is not None and getattr(user, "is_authenticated", False):
+        email = (getattr(user, "email", "") or getattr(user, "username", "")).strip()
+        if email:
+            return email
+
     email = request.headers.get("X-User-Email") or settings.DEV_DEFAULT_USER_EMAIL
     if not email:
         raise PermissionDenied(
-            "No user identity. Send the 'X-User-Email' header "
-            "(or set DEV_DEFAULT_USER_EMAIL for local dev)."
+            "No user identity. Sign in (or send the 'X-User-Email' header / set "
+            "DEV_DEFAULT_USER_EMAIL for local dev)."
         )
     return email.strip()

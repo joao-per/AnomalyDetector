@@ -4,6 +4,8 @@ api/services/anomalies.py. Responses are clean camelCase JSON.
 """
 from __future__ import annotations
 
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,9 +16,64 @@ from .services import anomalies as svc
 
 class HealthView(APIView):
     authentication_classes = []  # stays reachable for monitoring even with SSO on
+    permission_classes = []
 
     def get(self, request):
         return Response({"status": "ok", "service": "anomaly-bff", "phase": 1})
+
+
+# ── Session auth (Django login) ──────────────────────────────────────────────
+def _me_payload(user) -> dict:
+    name = ""
+    get_full_name = getattr(user, "get_full_name", None)
+    if callable(get_full_name):
+        name = (get_full_name() or "").strip()
+    return {
+        "email": getattr(user, "email", "") or getattr(user, "username", ""),
+        "username": getattr(user, "username", ""),
+        "name": name or None,
+    }
+
+
+class LoginView(APIView):
+    permission_classes = []  # reachable while signed out, obviously
+
+    def post(self, request):
+        data = request.data or {}
+        identifier = (data.get("email") or data.get("username") or "").strip()
+        password = data.get("password") or ""
+        if not identifier or not password:
+            raise ValidationError({"detail": "Email and password are required."})
+
+        user = authenticate(request, username=identifier, password=password)
+        if user is None and "@" in identifier:
+            # Accounts are usually keyed by email — allow logging in with it.
+            match = User.objects.filter(email__iexact=identifier).first()
+            if match:
+                user = authenticate(request, username=match.username, password=password)
+        if user is None:
+            return Response({"detail": "Invalid email or password."}, status=401)
+
+        login(request, user)
+        return Response(_me_payload(user))
+
+
+class LogoutView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        logout(request)
+        return Response({"loggedOut": True})
+
+
+class MeView(APIView):
+    permission_classes = []  # answers 401 itself so the SPA can probe quietly
+
+    def get(self, request):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Not signed in."}, status=401)
+        return Response(_me_payload(user))
 
 
 class AnomalyListView(APIView):

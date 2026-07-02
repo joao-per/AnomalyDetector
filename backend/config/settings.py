@@ -36,6 +36,7 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.sessions",
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
@@ -44,7 +45,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.middleware.security.SecurityMiddleware",
 ]
 
@@ -77,6 +80,10 @@ USE_TZ = True
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000"
 )
+# The SPA sends the session cookie with fetch(credentials: "include"). The
+# cookie stays SameSite=Lax — frontend and backend share the host (only the
+# port differs), which counts as same-site.
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = (
     "accept",
     "authorization",
@@ -89,10 +96,13 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "api.exceptions.api_exception_handler",
-    # Enforces a valid Entra Bearer token on every endpoint while
-    # ENTRA_AUTH_ENABLED=true; a no-op in Phase-1 fallback mode.
-    "DEFAULT_AUTHENTICATION_CLASSES": ["api.auth.EntraAuthentication"],
-    "DEFAULT_PERMISSION_CLASSES": [],
+    # Entra Bearer tokens (when enabled) or the Django login session identify
+    # the user; LoginRequired locks every endpoint unless it opts out.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "api.auth.EntraAuthentication",
+        "api.auth.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["api.auth.LoginRequired"],
 }
 
 # ── Dataverse ────────────────────────────────────────────────────────────────
@@ -127,6 +137,11 @@ GRAPH_CLIENT_SECRET = env("GRAPH_CLIENT_SECRET", DATAVERSE_CLIENT_SECRET)
 GRAPH_TOKEN_URL = env("GRAPH_TOKEN_URL", DATAVERSE_TOKEN_URL)
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
+# Every API endpoint (except /api/health/ and /api/auth/*) requires a signed-in
+# user: a Django login session (POST /api/auth/login/) or an Entra token.
+# Turn off only for local experiments — the X-User-Email header fallback then
+# identifies the user without any check.
+LOGIN_REQUIRED = env_bool("LOGIN_REQUIRED", True)
 # Entra ID SSO (Phase 2): the SPA signs users in with MSAL and calls this API
 # with a Bearer token, validated in api/auth.py. While disabled, the Phase-1
 # X-User-Email header fallback is used — local dev only, never production.

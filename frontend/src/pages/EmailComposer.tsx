@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { anomaliesApi } from "@/api/anomalies";
 import { ApiError } from "@/api/client";
-import { useAnomaly, useSetSignature, useSignature } from "@/api/hooks";
+import { useAnomaly, useMe, useSetSignature, useSignature } from "@/api/hooks";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
 import { activeUserEmail } from "@/auth/entra";
@@ -30,6 +30,7 @@ export function EmailComposer() {
   const internal = params.get("type") === "internal";
 
   const { data: anomaly, isLoading, error } = useAnomaly(id);
+  const me = useMe();
   const sigQuery = useSignature();
   const setSig = useSetSignature();
 
@@ -68,7 +69,10 @@ export function EmailComposer() {
     try {
       const res = await anomaliesApi.generateEmail(anomaly.id, internal);
       if (res.emailText) setBody(res.emailText);
-      setNotice({ kind: "ok", text: t("email.noticeGenerated") });
+      setNotice({
+        kind: "ok",
+        text: t(res.source === "template" ? "email.noticeTemplate" : "email.noticeGenerated"),
+      });
     } catch (e) {
       setNotice({ kind: "err", text: errMsg(e, t) });
     } finally {
@@ -141,7 +145,7 @@ export function EmailComposer() {
           <div className="space-y-2.5 px-7 pt-5 text-sm">
             <FieldRow label={t("email.from")}>
               <Avatar />
-              <span className="text-ink/80">{activeUserEmail() || "—"}</span>
+              <span className="text-ink/80">{me.data?.email || activeUserEmail() || "—"}</span>
             </FieldRow>
             <FieldRow label={t("email.to")} highlight>
               <Avatar />

@@ -38,6 +38,15 @@ const de = {
   "nav.dashboard": "Übersicht",
   "nav.untrained": "Trainingsarchiv",
 
+  // ── Login ────────────────────────────────────────────────────────
+  "login.title": "Anomaliedetektor",
+  "login.subtitle": "Melden Sie sich an, um Lieferanomalien zu prüfen.",
+  "login.email": "E-Mail",
+  "login.password": "Passwort",
+  "login.submit": "Anmelden",
+  "login.submitting": "Anmeldung…",
+  "login.invalid": "E-Mail oder Passwort ist falsch.",
+
   // ── Status rail (filter cards) ───────────────────────────────────
   "statusRail.all": "Alle",
   "statusRail.new": "Neu",
@@ -132,6 +141,7 @@ const de = {
   "email.send": "Senden",
   "email.subjectDefault": "Anomalie {id}",
   "email.noticeGenerated": "KI-Entwurf übernommen.",
+  "email.noticeTemplate": "Vorlagen-Entwurf übernommen (KI-Flow derzeit nicht erreichbar).",
   "email.noticeNoRecipient": "Empfänger-E-Mail fehlt.",
   "email.noticeSent": "E-Mail gesendet.",
   "email.noticeSignatureSaved": "Signatur gespeichert.",
@@ -173,6 +183,15 @@ const en: Record<TranslationKey, string> = {
   "nav.sections": "Sections",
   "nav.dashboard": "Overview",
   "nav.untrained": "Training archive",
+
+  // ── Login ────────────────────────────────────────────────────────
+  "login.title": "Anomaly Detector",
+  "login.subtitle": "Sign in to review supply anomalies.",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.submit": "Sign in",
+  "login.submitting": "Signing in…",
+  "login.invalid": "Wrong email or password.",
 
   // ── Status rail (filter cards) ───────────────────────────────────
   "statusRail.all": "All",
@@ -268,6 +287,7 @@ const en: Record<TranslationKey, string> = {
   "email.send": "Send",
   "email.subjectDefault": "Anomaly {id}",
   "email.noticeGenerated": "AI draft applied.",
+  "email.noticeTemplate": "Template draft applied (AI flow currently unavailable).",
   "email.noticeNoRecipient": "Recipient email is missing.",
   "email.noticeSent": "Email sent.",
   "email.noticeSignatureSaved": "Signature saved.",

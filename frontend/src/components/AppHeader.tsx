@@ -1,5 +1,7 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import logo from "@/assets/stiegl-logo.png";
+import { authApi } from "@/api/auth";
 import { entraEnabled, signOut } from "@/auth/entra";
 import { useI18n } from "@/i18n/i18n";
 import type { Lang, TranslationKey } from "@/i18n/translations";
@@ -80,18 +82,33 @@ function LangSwitch() {
   );
 }
 
-/** Account chip. With Entra SSO active it doubles as the sign-out button. */
+/** Account chip — signs the user out (Django session or Entra SSO). */
 function UserButton({ email }: { email: string }) {
   const { t } = useI18n();
-  const label = entraEnabled
-    ? t("header.signOut", { email: email || t("header.account") })
-    : email || t("header.account");
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const label = t("header.signOut", { email: email || t("header.account") });
+
+  async function handleSignOut() {
+    if (entraEnabled) {
+      signOut();
+      return;
+    }
+    try {
+      await authApi.logout();
+    } catch {
+      // session already gone — proceed to the login screen anyway
+    }
+    qc.clear();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <button
       type="button"
       title={label}
       aria-label={label}
-      onClick={entraEnabled ? signOut : undefined}
+      onClick={handleSignOut}
       className="relative grid h-12 w-12 place-items-center rounded-full bg-white text-ink shadow-md
                  transition hover:shadow-lg hover:text-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
@@ -100,9 +117,7 @@ function UserButton({ email }: { email: string }) {
       ) : (
         <UserIcon className="h-5 w-5" />
       )}
-      {entraEnabled && (
-        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
-      )}
+      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
     </button>
   );
 }
