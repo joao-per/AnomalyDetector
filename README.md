@@ -40,9 +40,10 @@ The frontend needs the backend running, and the backend needs a valid
 ## Notes
 
 - Secrets live only in `.env` files (gitignored) — never commit them.
-- Auth: Entra ID SSO (MSAL in the frontend, token validation in the backend) is
-  activated by the `ENTRA_*` / `VITE_ENTRA_*` env vars; without them the app
-  falls back to the Phase-1 `X-User-Email` header — local dev only.
+- Auth: users sign in at `/login` (Django session auth; create accounts with
+  `python manage.py createsuperuser`). Entra ID SSO can replace it later via
+  the `ENTRA_*` / `VITE_ENTRA_*` env vars. The old `X-User-Email` header only
+  works with `LOGIN_REQUIRED=false` (local experiments).
 - Emails send through a Power Automate flow when its URL is configured,
   otherwise through Microsoft Graph (`GRAPH_SENDER_UPN` + Mail.Send permission).
   `EMAIL_ACTIONS_ENABLED=false` is the kill switch (endpoints return 501).

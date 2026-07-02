@@ -60,20 +60,27 @@ Request flow: `api/urls.py` → thin `APIView`s in `api/views.py` → all logic 
   is configured. Needs the application permission Mail.Send. Raises `GraphError`.
 - **`api/exceptions.py`** — `api_exception_handler` turns `DataverseError`/`FlowError`/
   `GraphError` into clean JSON with the upstream status; defines `FeatureNotEnabled` (HTTP 501).
-- **`api/auth.py`** — dual-mode identity. With `ENTRA_AUTH_ENABLED=true`, every endpoint (except
-  `/api/health/`) requires an Entra Bearer token, validated against the tenant JWKS
-  (issuer/audience/expiry) via the `EntraAuthentication` DRF class; the acting user comes from
-  the token's `preferred_username`/`email`/`upn` claim. With it false (local dev only), the
-  `X-User-Email` header fallback applies — never run production that way.
+- **`api/auth.py`** — identity + access control. `LOGIN_REQUIRED` (default true) locks every
+  endpoint except `/api/health/` and `/api/auth/*` behind a signed-in user via the
+  `LoginRequired` DRF permission. Sign-in paths: **Django session login** (POST
+  `/api/auth/login/` with email+password, `SessionAuthentication` without CSRF — the cookie is
+  SameSite=Lax, so frontend and API must share a host) or **Entra Bearer tokens**
+  (`ENTRA_AUTH_ENABLED=true`, validated against the tenant JWKS). The `X-User-Email` header
+  fallback only applies with `LOGIN_REQUIRED=false` — local experiments only. Create accounts
+  with `manage.py createsuperuser` or `User.objects` in the shell.
 
 ## Frontend architecture
 
-Vite + React 19 + TypeScript + Tailwind v4. `@` aliases `src/`. Three routes (`App.tsx`):
-`/` Dashboard, `/untrained` Untrained (training archive: cancelled anomalies grouped by creation
-date, with a Retrain action), and `/anomalies/:id/email` EmailComposer.
+Vite + React 19 + TypeScript + Tailwind v4. `@` aliases `src/`. Routes (`App.tsx`): `/login`
+(session sign-in over a WebGL ferrofluid backdrop — `components/Ferrofluid.tsx`, ogl), and three
+`RequireAuth`-guarded routes: `/` Dashboard, `/untrained` Untrained (training archive: cancelled
+anomalies grouped by creation date, with a Retrain action), `/anomalies/:id/email` EmailComposer.
 
+- **`src/auth/RequireAuth.tsx`** — route guard on `GET /api/auth/me/` (`useMe()`); anonymous
+  visitors land on `/login`. **`src/api/auth.ts`** — login/logout/me calls; the header's user
+  chip signs out.
 - **`src/auth/entra.ts`** — MSAL sign-in (redirect flow at boot in `main.tsx`), activated only
-  when all three `VITE_ENTRA_*` vars are set; otherwise the app stays in header mode.
+  when all three `VITE_ENTRA_*` vars are set; otherwise session login applies.
 - **`src/api/client.ts`** — typed `fetch` wrapper; sends `Authorization: Bearer …` in SSO mode,
   else `X-User-Email` from `VITE_USER_EMAIL`; throws `ApiError`.
 - **`src/api/anomalies.ts`** — one function per BFF route. **`src/api/hooks.ts`** — React Query
