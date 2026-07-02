@@ -7,6 +7,7 @@ Power Automate. Status guards from the canvas app are enforced here on the serve
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 
 from django.conf import settings
@@ -18,6 +19,8 @@ from ..exceptions import FeatureNotEnabled
 from .dataverse import dataverse
 from .flows import FlowError, run_flow
 from .graph import graph
+
+logger = logging.getLogger(__name__)
 
 
 def _require_email_enabled() -> None:
@@ -220,24 +223,84 @@ def _change_status(
     return get_anomaly(guid)
 
 
-# ── Email draft generation (Power Automate) ──────────────────────────────────
+# ── Email draft generation (Power Automate AI flow, template fallback) ───────
 def generate_email(guid: str, *, internal: bool) -> dict:
+    """Draft via the AI flow when it is reachable; otherwise fall back to a
+    server-side template so the composer always gets a usable draft. (The flow
+    URL needs its full SAS signature — 'Copy URL' on the flow's HTTP trigger —
+    otherwise Power Automate answers 401 DirectApiAuthorizationRequired.)"""
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
-    vendor_email = record.get(a["vendor_email"]) or "nicht vorhanden"
-    payload = {
-        "anomalieId": record.get(a["anomalie_id"]),
-        "typ": "Intern" if internal else "Lieferant",
-        "lieferantenName": record.get(a["vendor_name"]),
-        "lieferantenEmail": vendor_email,
-        # The flow expects the record GUID here (canvas app passed 'Anomaly Report').
-        "anomalyReport": record.get(a["guid"]),
+
+    if settings.GENERATE_EMAIL_FLOW_URL:
+        vendor_email = record.get(a["vendor_email"]) or "nicht vorhanden"
+        payload = {
+            "anomalieId": record.get(a["anomalie_id"]),
+            "typ": "Intern" if internal else "Lieferant",
+            "lieferantenName": record.get(a["vendor_name"]),
+            "lieferantenEmail": vendor_email,
+            # The flow expects the record GUID here (canvas app passed 'Anomaly Report').
+            "anomalyReport": record.get(a["guid"]),
+        }
+        try:
+            result = run_flow(
+                settings.GENERATE_EMAIL_FLOW_URL, payload, name="LieferantenEMailgenerieren"
+            )
+            return {"emailText": result.get("emailtextresponse"), "source": "flow", "raw": result}
+        except FlowError as exc:
+            logger.warning("AI email flow unavailable (%s) — using template draft.", exc)
+
+    return {
+        "emailText": _template_email_text(record, internal=internal),
+        "source": "template",
+        "raw": None,
     }
-    result = run_flow(
-        settings.GENERATE_EMAIL_FLOW_URL, payload, name="LieferantenEMailgenerieren"
+
+
+def _template_email_text(record: dict, *, internal: bool) -> str:
+    """German draft built from the anomaly's facts (the signature is appended
+    client-side). Used whenever the AI flow can't be reached."""
+    a = fm.ANOMALY
+    g = record.get
+    facts = "\n".join(
+        f"• {label}: {value}"
+        for label, value in [
+            ("Anomalie", f"{g(a['anomalie_id']) or '—'} – {g(a['anomaly_type']) or '—'}"),
+            ("Bestellung", g(a["order_id"]) or "—"),
+            ("Artikel", f"{g(a['article_name']) or g(a['article_id']) or '—'}"
+                        f" ({g(a['article_category']) or '—'})"),
+            ("Prozess", g(a["process_reference"]) or "—"),
+        ]
     )
-    return {"emailText": result.get("emailtextresponse"), "raw": result}
+    description = (g(a["match_explanation"]) or g(a["description1"]) or "").strip()
+    if description == (g(a["anomaly_type"]) or "").strip():
+        description = ""  # no value in repeating the type as the "explanation"
+    if description:
+        description = f"\n{description}\n"
+
+    if internal:
+        return (
+            "Hallo,\n\n"
+            f"der Anomaliedetektor hat zur Bestellung {g(a['order_id']) or '—'} eine "
+            "Auffälligkeit gemeldet:\n\n"
+            f"{facts}\n"
+            f"{description}\n"
+            "Bitte um kurze Einschätzung, ob die Abweichung nachvollziehbar ist oder "
+            "weiter untersucht werden soll.\n\n"
+            "Vielen Dank und freundliche Grüße"
+        )
+    return (
+        "Sehr geehrte Damen und Herren,\n\n"
+        "bei der Prüfung unserer Bestell- und Lieferdaten wurde zu Ihrer Lieferung "
+        "eine Auffälligkeit festgestellt:\n\n"
+        f"{facts}\n"
+        f"{description}\n"
+        "Wir bitten Sie um kurze Prüfung des Sachverhalts und um Rückmeldung, ob es "
+        "sich um eine Abweichung Ihrerseits handelt oder ob uns weitere Informationen "
+        "fehlen.\n\n"
+        "Mit freundlichen Grüßen"
+    )
 
 
 # ── Sending emails (save draft to Dataverse, then flow OR Graph) ─────────────
