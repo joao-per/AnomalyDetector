@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Anomaly } from "@/api/types";
 import { STATUS } from "@/api/types";
 import { ApiError } from "@/api/client";
 import {
+  useCancelAnomaly,
   useCloseAnomaly,
   useRetrainAnomaly,
   useUntrainAnomaly,
@@ -16,7 +17,14 @@ import { ScoreGauge } from "./ScoreGauge";
 import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { CriticalityMeter } from "./CriticalityMeter";
-import { DangerTriangleIcon } from "./icons";
+import {
+  ChevronDownIcon,
+  DangerTriangleIcon,
+  EyeOffIcon,
+  MailIcon,
+  ProgressIcon,
+  XCircleIcon,
+} from "./icons";
 
 type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -41,8 +49,10 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
   const navigate = useNavigate();
   const close = useCloseAnomaly();
   const untrain = useUntrainAnomaly();
+  const cancel = useCancelAnomaly();
   const retrain = useRetrainAnomaly();
-  const busy = close.isPending || untrain.isPending || retrain.isPending;
+  const busy =
+    close.isPending || untrain.isPending || cancel.isPending || retrain.isPending;
 
   // Reset transient UI when the selected anomaly changes.
   useEffect(() => {
@@ -91,6 +101,16 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
   function runUntrain() {
     setNotice(null);
     untrain.mutate(
+      { guid: anomaly!.id, comment },
+      {
+        onSuccess: () => setNotice({ kind: "ok", text: t("detail.noticeUntrained") }),
+        onError: (e) => setNotice({ kind: "err", text: errMsg(e, t) }),
+      },
+    );
+  }
+  function runCancel() {
+    setNotice(null);
+    cancel.mutate(
       { guid: anomaly!.id, comment },
       {
         onSuccess: () => setNotice({ kind: "ok", text: t("detail.noticeCancelled") }),
@@ -199,39 +219,183 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
         )}
 
         {/* Actions */}
-        <div className="mt-auto flex flex-wrap gap-2 pt-1">
-          {isNew ? (
-            <>
-              <ActionButton
-                variant="solid"
-                disabled={busy || needComment}
-                onClick={runClose}
-              >
-                {t("detail.actionInProgress")}
-              </ActionButton>
-              <ActionButton
-                variant="light"
-                disabled={busy || needComment}
-                onClick={runUntrain}
-              >
-                {t("detail.actionCancel")}
-              </ActionButton>
-              <ActionButton
-                variant="ghost"
-                disabled={busy}
-                onClick={() => navigate(`/anomalies/${anomaly.id}/email`)}
-              >
-                {t("detail.actionEmail")}
-              </ActionButton>
-            </>
-          ) : (
-            <ActionButton variant="solid" disabled={busy} onClick={runRetrain}>
-              {t("detail.actionReset")}
-            </ActionButton>
-          )}
-        </div>
+        <ActionMenu
+          isNew={isNew}
+          busy={busy}
+          needComment={needComment}
+          onProgress={runClose}
+          onUntrain={runUntrain}
+          onCancel={runCancel}
+          onRetrain={runRetrain}
+          onEmail={() => navigate(`/anomalies/${anomaly.id}/email`)}
+        />
       </div>
     </Panel>
+  );
+}
+
+// ── Action dropdown ──────────────────────────────────────────────────────────
+interface ActionDef {
+  id: string;
+  labelKey: TranslationKey;
+  icon: ReactNode;
+  chip: string; // icon-chip tint, mirrors the status-badge tones
+  needsComment?: boolean;
+  run: () => void;
+}
+
+function ActionMenu({
+  isNew,
+  busy,
+  needComment,
+  onProgress,
+  onUntrain,
+  onCancel,
+  onRetrain,
+  onEmail,
+}: {
+  isNew: boolean;
+  busy: boolean;
+  needComment: boolean;
+  onProgress: () => void;
+  onUntrain: () => void;
+  onCancel: () => void;
+  onRetrain: () => void;
+  onEmail: () => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Close on outside click / Escape while open.
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const actions: ActionDef[] = isNew
+    ? [
+        {
+          id: "progress",
+          labelKey: "detail.actionInProgress",
+          icon: <ProgressIcon className="h-4 w-4" />,
+          chip: "bg-amber-50 text-amber-600",
+          needsComment: true,
+          run: onProgress,
+        },
+        {
+          id: "untrain",
+          labelKey: "detail.actionUntrain",
+          icon: <EyeOffIcon className="h-4 w-4" />,
+          chip: "bg-violet-50 text-violet-600",
+          needsComment: true,
+          run: onUntrain,
+        },
+        {
+          id: "cancel",
+          labelKey: "detail.actionCancel",
+          icon: <XCircleIcon className="h-4 w-4" />,
+          chip: "bg-rose-50 text-rose-600",
+          needsComment: true,
+          run: onCancel,
+        },
+        {
+          id: "email",
+          labelKey: "detail.actionEmail",
+          icon: <MailIcon className="h-4 w-4" />,
+          chip: "bg-slate-100 text-slate-600",
+          run: onEmail,
+        },
+      ]
+    : [
+        {
+          id: "retrain",
+          labelKey: "detail.actionReset",
+          icon: <ProgressIcon className="h-4 w-4" />,
+          chip: "bg-emerald-50 text-emerald-600",
+          run: onRetrain,
+        },
+        {
+          id: "email",
+          labelKey: "detail.actionEmail",
+          icon: <MailIcon className="h-4 w-4" />,
+          chip: "bg-slate-100 text-slate-600",
+          run: onEmail,
+        },
+      ];
+
+  return (
+    <div ref={rootRef} className="relative mt-auto pt-1">
+      {open && (
+        <div
+          role="menu"
+          className="absolute inset-x-0 bottom-full z-20 mb-2 overflow-hidden rounded-2xl bg-white
+                     shadow-[0px_14px_40px_rgba(0,0,0,0.35)] ring-1 ring-black/10"
+        >
+          <div className="divide-y divide-line/70">
+            {actions.map((a) => {
+              const disabled = busy || (a.needsComment && needComment);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="menuitem"
+                  disabled={disabled}
+                  onClick={() => {
+                    setOpen(false);
+                    a.run();
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition
+                             hover:bg-red-50/70 disabled:cursor-not-allowed disabled:opacity-45
+                             disabled:hover:bg-transparent"
+                >
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${a.chip}`}>
+                    {a.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-ink">
+                      {t(a.labelKey)}
+                    </span>
+                    {a.needsComment && needComment && (
+                      <span className="block text-[11px] text-muted">
+                        {t("detail.needsComment")}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between rounded-xl bg-white px-4 py-2.5 text-sm
+                   font-semibold text-brand-dark shadow transition hover:bg-white/90
+                   disabled:cursor-wait disabled:opacity-70"
+      >
+        {busy ? t("common.sending") : t("detail.actions")}
+        <ChevronDownIcon
+          className={`h-4 w-4 transition-transform duration-200 ${open ? "" : "rotate-180"}`}
+        />
+      </button>
+    </div>
   );
 }
 
@@ -300,31 +464,3 @@ function PlotButton({
   );
 }
 
-function ActionButton({
-  variant,
-  disabled,
-  onClick,
-  children,
-}: {
-  variant: "solid" | "light" | "ghost";
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  const styles = {
-    solid: "bg-white text-brand-dark hover:bg-white/90",
-    light: "bg-black/25 text-white hover:bg-black/35",
-    ghost: "border border-white/40 text-white hover:bg-white/10",
-  }[variant];
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex-1 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-semibold transition
-                  disabled:cursor-not-allowed disabled:opacity-50 ${styles}`}
-    >
-      {children}
-    </button>
-  );
-}

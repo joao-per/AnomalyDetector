@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Anomaly } from "@/api/types";
-import { isHighCriticality, statusTone } from "@/lib/format";
+import { isHighCriticality, isTerminal, statusTone } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
 import { CheckCircleIcon, DangerTriangleIcon, ProgressIcon } from "./icons";
@@ -15,7 +15,7 @@ export function matchesCard(a: Anomaly, key: CardKey): boolean {
     case "progress":
       return statusTone(a.status) === "progress";
     case "resolved":
-      return statusTone(a.status) === "cancelled";
+      return isTerminal(a.status); // done, cancelled or untrained
     default:
       return true;
   }

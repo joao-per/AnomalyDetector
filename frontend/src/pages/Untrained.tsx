@@ -37,7 +37,7 @@ export function Untrained() {
   const { t, lang } = useI18n();
   const locale = lang === "de" ? "de-AT" : "en-GB";
 
-  const { data, isLoading, error } = useAnomalies(STATUS.CANCELLED);
+  const { data, isLoading, error } = useAnomalies(STATUS.UNTRAINED);
   const retrain = useRetrainAnomaly();
 
   const [dir, setDir] = useState<SortDir>("desc");

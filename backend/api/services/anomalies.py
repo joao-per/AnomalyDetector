@@ -83,14 +83,32 @@ def close_anomaly(guid: str, *, comment: str, user: str) -> dict:
 
 
 def untrain_anomaly(guid: str, *, comment: str, user: str) -> dict:
-    """'Untrain' → status 'abgebrochen'. Only allowed from 'new'; comment required.
+    """'Untrain' → status 'Abtrainiert'. Only allowed from 'new'; comment required.
 
     Besides the status change, this records the anomaly in the
     `at_abtrainierteanomaliens` table — the ML training feedback the pipeline
-    uses to stop flagging this pattern (mirroring the original
-    SetStatusAbgebrochen flow). When SET_STATUS_CANCELLED_FLOW_URL is set the
-    flow performs that insert itself; on the direct-patch path we do it here.
+    uses to stop flagging this pattern. When SET_STATUS_UNTRAINED_FLOW_URL is
+    set the flow performs that insert itself; on the direct-patch path we do
+    it here.
     """
+    return _change_status(
+        guid,
+        new_status=fm.STATUS_UNTRAINED,
+        comment=comment,
+        user=user,
+        require_status=fm.STATUS_NEW,
+        flow_url=settings.SET_STATUS_UNTRAINED_FLOW_URL,
+        flow_name="SetStatusAbtrainiert",
+        on_direct=lambda record: _record_training_feedback(
+            record, comment=comment, user=user
+        ),
+    )
+
+
+def cancel_anomaly(guid: str, *, comment: str, user: str) -> dict:
+    """'Cancel' → status 'abgebrochen'. Only allowed from 'new'; comment
+    required. Plain terminal state — unlike untrain, the ML pipeline keeps
+    flagging this pattern."""
     return _change_status(
         guid,
         new_status=fm.STATUS_CANCELLED,
@@ -99,9 +117,6 @@ def untrain_anomaly(guid: str, *, comment: str, user: str) -> dict:
         require_status=fm.STATUS_NEW,
         flow_url=settings.SET_STATUS_CANCELLED_FLOW_URL,
         flow_name="SetStatusAbgebrochen",
-        on_direct=lambda record: _record_training_feedback(
-            record, comment=comment, user=user
-        ),
     )
 
 

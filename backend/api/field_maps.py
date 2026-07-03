@@ -105,10 +105,12 @@ UNTRAINED = {
     "created_at": "cr062_erstelldatum",
 }
 
-# ── Anomaly workflow status values (text, confirmed: sample row = "new") ──────
+# ── Anomaly workflow status values (text, confirmed against live rows) ────────
 STATUS_NEW = "new"
 STATUS_IN_PROGRESS = "in Bearbeitung"
-STATUS_CANCELLED = "abgebrochen"
+STATUS_CANCELLED = "abgebrochen"   # plain cancel — terminal, no ML side-effects
+STATUS_UNTRAINED = "Abtrainiert"   # untrain — also feeds at_abtrainierteanomaliens
+STATUS_DONE = "Abgeschlossen"      # closed/completed (set by existing flows)
 
 # Which field receives the comment on a status change (direct-patch fallback).
 COMMENT_FIELD = ANOMALY["comment_done"]

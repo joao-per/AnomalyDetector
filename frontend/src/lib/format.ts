@@ -1,6 +1,12 @@
 import { STATUS } from "@/api/types";
 
-export type StatusTone = "new" | "progress" | "cancelled" | "unknown";
+export type StatusTone =
+  | "new"
+  | "progress"
+  | "cancelled"
+  | "untrained"
+  | "done"
+  | "unknown";
 
 /** Map a raw Dataverse status to a visual tone (label is translated in the UI). */
 export function statusTone(status: string | null | undefined): StatusTone {
@@ -11,9 +17,19 @@ export function statusTone(status: string | null | undefined): StatusTone {
       return "progress";
     case STATUS.CANCELLED:
       return "cancelled";
+    case STATUS.UNTRAINED:
+      return "untrained";
+    case STATUS.DONE:
+      return "done";
     default:
       return "unknown";
   }
+}
+
+/** Terminal states — nothing left to do on the anomaly. */
+export function isTerminal(status: string | null | undefined): boolean {
+  const tone = statusTone(status);
+  return tone === "cancelled" || tone === "untrained" || tone === "done";
 }
 
 /** Is this a "high criticality" label? Used to colour the cell red. */

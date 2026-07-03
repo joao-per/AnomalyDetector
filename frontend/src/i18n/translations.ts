@@ -67,6 +67,8 @@ const de = {
   "status.new": "Neu",
   "status.progress": "In Bearbeitung",
   "status.cancelled": "Abgebrochen",
+  "status.untrained": "Abtrainiert",
+  "status.done": "Abgeschlossen",
 
   // ── Detail panel ─────────────────────────────────────────────────
   "detail.noneTitle": "Keine Anomalie ausgewählt",
@@ -79,11 +81,15 @@ const de = {
   "detail.comment": "Kommentar",
   "detail.commentRequired": "(für Statuswechsel erforderlich)",
   "detail.commentPlaceholder": "Begründung / Notiz…",
+  "detail.actions": "Aktionen",
   "detail.actionInProgress": "In Bearbeitung nehmen",
-  "detail.actionCancel": "Abtrainieren",
+  "detail.actionUntrain": "Abtrainieren",
+  "detail.actionCancel": "Abbrechen",
   "detail.actionEmail": "E-Mail verfassen",
   "detail.actionReset": "Auf „Neu“ zurücksetzen",
+  "detail.needsComment": "Kommentar erforderlich",
   "detail.noticeInProgress": "Status: In Bearbeitung.",
+  "detail.noticeUntrained": "Status: Abtrainiert.",
   "detail.noticeCancelled": "Status: Abgebrochen.",
   "detail.noticeNew": "Status: Neu.",
 
@@ -113,7 +119,7 @@ const de = {
   "untrained.retrained": "{id} ist zurück im Training.",
   "untrained.emptyTitle": "Nichts abtrainiert",
   "untrained.emptyHint":
-    "Das Modell lernt derzeit aus jeder Anomalie. Abgebrochene Fälle erscheinen hier.",
+    "Das Modell lernt derzeit aus jeder Anomalie. Abtrainierte Fälle erscheinen hier.",
   "untrained.error": "Fehler beim Laden: {error}",
 
   // ── Signature panel ──────────────────────────────────────────────
@@ -213,6 +219,8 @@ const en: Record<TranslationKey, string> = {
   "status.new": "New",
   "status.progress": "In progress",
   "status.cancelled": "Cancelled",
+  "status.untrained": "Untrained",
+  "status.done": "Completed",
 
   // ── Detail panel ─────────────────────────────────────────────────
   "detail.noneTitle": "No anomaly selected",
@@ -225,11 +233,15 @@ const en: Record<TranslationKey, string> = {
   "detail.comment": "Comment",
   "detail.commentRequired": "(required to change status)",
   "detail.commentPlaceholder": "Reason / note…",
+  "detail.actions": "Actions",
   "detail.actionInProgress": "Take in progress",
-  "detail.actionCancel": "Untrain",
+  "detail.actionUntrain": "Untrain",
+  "detail.actionCancel": "Cancel",
   "detail.actionEmail": "Compose email",
   "detail.actionReset": "Reset to “New”",
+  "detail.needsComment": "Comment required",
   "detail.noticeInProgress": "Status: In progress.",
+  "detail.noticeUntrained": "Status: Untrained.",
   "detail.noticeCancelled": "Status: Cancelled.",
   "detail.noticeNew": "Status: New.",
 
@@ -259,7 +271,7 @@ const en: Record<TranslationKey, string> = {
   "untrained.retrained": "{id} is back in training.",
   "untrained.emptyTitle": "Nothing untrained",
   "untrained.emptyHint":
-    "The model is currently learning from every anomaly. Cancelled cases show up here.",
+    "The model is currently learning from every anomaly. Untrained cases show up here.",
   "untrained.error": "Error loading: {error}",
 
   // ── Signature panel ──────────────────────────────────────────────

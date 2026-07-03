@@ -75,9 +75,11 @@ export interface Signature {
   username?: string | null;
 }
 
-/** The three workflow statuses (German, as stored in Dataverse). */
+/** Workflow statuses (German, as stored in Dataverse). */
 export const STATUS = {
   NEW: "new",
   IN_PROGRESS: "in Bearbeitung",
-  CANCELLED: "abgebrochen",
+  CANCELLED: "abgebrochen", // plain cancel — terminal, no ML side-effects
+  UNTRAINED: "Abtrainiert", // untrained — suppressed in the ML pipeline
+  DONE: "Abgeschlossen", // closed/completed (set by existing flows)
 } as const;

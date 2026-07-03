@@ -73,8 +73,9 @@ Request flow: `api/urls.py` → thin `APIView`s in `api/views.py` → all logic 
 
 Vite + React 19 + TypeScript + Tailwind v4. `@` aliases `src/`. Routes (`App.tsx`): `/login`
 (session sign-in over a WebGL ferrofluid backdrop — `components/Ferrofluid.tsx`, ogl), and three
-`RequireAuth`-guarded routes: `/` Dashboard, `/untrained` Untrained (training archive: cancelled
-anomalies grouped by creation date, with a Retrain action), `/anomalies/:id/email` EmailComposer.
+`RequireAuth`-guarded routes: `/` Dashboard, `/untrained` Untrained (training archive: anomalies
+with status `Abtrainiert`, grouped by creation date, with a Retrain action),
+`/anomalies/:id/email` EmailComposer.
 
 - **`src/auth/RequireAuth.tsx`** — route guard on `GET /api/auth/me/` (`useMe()`); anonymous
   visitors land on `/login`. **`src/api/auth.ts`** — login/logout/me calls; the header's user
@@ -98,11 +99,12 @@ anomalies grouped by creation date, with a Retrain action), `/anomalies/:id/emai
 - **Email sending picks the first configured path**: send-flow URL → Microsoft Graph
   (`GRAPH_SENDER_UPN`) → clean 503. `EMAIL_ACTIONS_ENABLED=false` is a kill switch that turns
   the generate/send endpoints into 501. Status changes and signatures work regardless.
-- **Untrain ⇄ retrain maintain the ML training feedback**: on the direct-patch path, untraining
-  inserts a row into `at_abtrainierteanomaliens` (the table the pipeline reads to suppress
-  patterns) and retraining deletes the matching rows again. The insert translates the anomaly's
-  German `at_processreference` (Rechnung/Wareneingang/…) to the pipeline's process tokens
-  (`invoice`/`goods_delivery`/…) — see `_PROCESS_REF` in `services/anomalies.py`.
+- **Untrain ≠ cancel.** Untrain sets status `Abtrainiert` AND inserts a row into
+  `at_abtrainierteanomaliens` (the table the pipeline reads to suppress patterns); retrain
+  deletes the matching rows again. Cancel sets status `abgebrochen` with no ML side-effects.
+  The feedback insert translates the anomaly's German `at_processreference`
+  (Rechnung/Wareneingang/…) to the pipeline's process tokens (`invoice`/`goods_delivery`/…) —
+  see `_PROCESS_REF` in `services/anomalies.py`.
 - **Status-change flows are optional**: if `SET_STATUS_*_FLOW_URL` is blank, the backend writes
   the transition directly to Dataverse (default). If a flow URL is set, the flow is assumed to
   handle its own side-effects (including the untrain feedback insert).

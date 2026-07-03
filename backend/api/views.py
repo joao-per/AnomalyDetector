@@ -103,6 +103,14 @@ class AnomalyUntrainView(APIView):
         )
 
 
+class AnomalyCancelView(APIView):
+    def post(self, request, guid: str):
+        comment = (request.data or {}).get("comment", "")
+        return Response(
+            svc.cancel_anomaly(guid, comment=comment, user=get_user_email(request))
+        )
+
+
 class AnomalyRetrainView(APIView):
     def post(self, request, guid: str):
         return Response(svc.retrain_anomaly(guid))

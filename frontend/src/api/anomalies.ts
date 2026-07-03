@@ -21,6 +21,9 @@ export const anomaliesApi = {
   untrain: (guid: string, comment: string) =>
     api.post<Anomaly>(`anomalies/${guid}/untrain/`, { comment }),
 
+  cancel: (guid: string, comment: string) =>
+    api.post<Anomaly>(`anomalies/${guid}/cancel/`, { comment }),
+
   retrain: (guid: string) => api.post<Anomaly>(`anomalies/${guid}/retrain/`),
 
   generateEmail: (guid: string, internal: boolean) =>

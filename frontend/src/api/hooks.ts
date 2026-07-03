@@ -78,6 +78,9 @@ export const useCloseAnomaly = () =>
 export const useUntrainAnomaly = () =>
   useStatusMutation((g, c) => anomaliesApi.untrain(g, c));
 
+export const useCancelAnomaly = () =>
+  useStatusMutation((g, c) => anomaliesApi.cancel(g, c));
+
 export function useRetrainAnomaly() {
   const qc = useQueryClient();
   return useMutation({
