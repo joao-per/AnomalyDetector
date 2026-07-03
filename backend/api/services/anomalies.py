@@ -349,13 +349,24 @@ def _template_email_text(record: dict, *, internal: bool) -> str:
 
 
 # ── Sending emails (save draft to Dataverse, then flow OR Graph) ─────────────
+def _normalize_draft(draft: str, *, subject: str, record: dict) -> str:
+    """The send flows split the saved draft at 'Betreff:' to isolate the email
+    subject (AI drafts always start with such a line) — add one if missing."""
+    if "Betreff:" in draft:
+        return draft
+    a = fm.ANOMALY
+    subj = subject.strip() or f"Anomalie {record.get(a['anomalie_id'])}"
+    return f"Betreff: {subj}\n\n{draft}"
+
+
 def send_vendor_email(
     guid: str, *, draft: str, target_email: str, user: str, subject: str = ""
 ) -> dict:
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
-    dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_vendor"]: draft})
+    stored = _normalize_draft(draft, subject=subject, record=record)
+    dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_vendor"]: stored})
     return _dispatch_email(
         record,
         draft=draft,
@@ -378,7 +389,8 @@ def send_internal_email(
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
-    dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_internal"]: draft})
+    stored = _normalize_draft(draft, subject=subject, record=record)
+    dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["draft_internal"]: stored})
     return _dispatch_email(
         record,
         draft=draft,
