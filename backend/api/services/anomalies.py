@@ -8,6 +8,7 @@ Power Automate. Status guards from the canvas app are enforced here on the serve
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 
 from django.conf import settings
@@ -241,12 +242,17 @@ def _change_status(
 # ── Email draft generation (Power Automate AI flow, template fallback) ───────
 def generate_email(guid: str, *, internal: bool) -> dict:
     """Draft via the AI flow when it is reachable; otherwise fall back to a
-    server-side template so the composer always gets a usable draft. (The flow
-    URL needs its full SAS signature — 'Copy URL' on the flow's HTTP trigger —
-    otherwise Power Automate answers 401 DirectApiAuthorizationRequired.)"""
+    server-side template so the composer always gets a usable draft.
+
+    The HTTP-trigger flow ("exthttp – LieferantenEMail generieren") answers 202
+    with an empty body: it runs GPT and writes the result into the anomaly's
+    draft column in Dataverse. So after triggering it we poll the record until
+    the fresh draft appears (typically a few seconds)."""
     _require_email_enabled()
     a = fm.ANOMALY
     record = _retrieve(guid)
+    draft_field = a["draft_internal"] if internal else a["draft_vendor"]
+    previous = (record.get(draft_field) or "").strip()
 
     if settings.GENERATE_EMAIL_FLOW_URL:
         vendor_email = record.get(a["vendor_email"]) or "nicht vorhanden"
@@ -262,7 +268,17 @@ def generate_email(guid: str, *, internal: bool) -> dict:
             result = run_flow(
                 settings.GENERATE_EMAIL_FLOW_URL, payload, name="LieferantenEMailgenerieren"
             )
-            return {"emailText": result.get("emailtextresponse"), "source": "flow", "raw": result}
+            text = ""
+            if isinstance(result, dict):
+                text = (result.get("emailtextresponse") or "").strip()
+            if not text:
+                text = _await_generated_draft(guid, draft_field, previous)
+            if text:
+                return {"emailText": text, "source": "flow", "raw": result}
+            logger.warning(
+                "AI email flow accepted the request but no draft appeared in "
+                "time — using template draft."
+            )
         except FlowError as exc:
             logger.warning("AI email flow unavailable (%s) — using template draft.", exc)
 
@@ -271,6 +287,20 @@ def generate_email(guid: str, *, internal: bool) -> dict:
         "source": "template",
         "raw": None,
     }
+
+
+def _await_generated_draft(
+    guid: str, draft_field: str, previous: str, *, timeout: float = 45, interval: float = 3
+) -> str:
+    """Poll the anomaly's draft column until the flow has written a new value."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        time.sleep(interval)
+        row = dataverse.retrieve(fm.ANOMALY_ENTITY_SET, guid, select=[draft_field])
+        text = (row.get(draft_field) or "").strip()
+        if text and text != previous:
+            return text
+    return ""
 
 
 def _template_email_text(record: dict, *, internal: bool) -> str:
