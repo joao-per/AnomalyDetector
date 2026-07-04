@@ -39,6 +39,7 @@ export function AnomalyCard({ anomaly }: { anomaly: Anomaly | null }) {
       <div className="w-full">
         <h2 className="mb-2 text-sm font-semibold text-[#ff7a7a]">{t("card.detailsTitle")}</h2>
         <dl className="space-y-1.5 text-xs leading-relaxed text-white/90">
+          <Row label={t("common.processRef")} value={dash(anomaly?.processReference)} />
           <Row label={t("common.email")} value={dash(anomaly?.vendorEmail)} />
           <Row label={t("common.phone")} value={dash(anomaly?.vendorPhone)} />
           <Row label={t("common.order")} value={dash(anomaly?.orderId)} />

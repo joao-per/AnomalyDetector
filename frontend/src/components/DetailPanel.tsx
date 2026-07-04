@@ -170,9 +170,9 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
             {t("detail.whatHappened")}
           </h3>
           <p className="text-sm leading-relaxed text-white/90">
-            {anomaly.matchExplanation ||
-              anomaly.description1 ||
-              t("detail.noDescription")}
+            {/* Business-readable description only — at_matchexplanation is too
+                technical for the ops team (client feedback 2026-07-04). */}
+            {anomaly.description1 || t("detail.noDescription")}
           </p>
         </div>
 
@@ -228,6 +228,9 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
           onCancel={runCancel}
           onRetrain={runRetrain}
           onEmail={() => navigate(`/anomalies/${anomaly.id}/email`)}
+          onEmailInternal={() =>
+            navigate(`/anomalies/${anomaly.id}/email?type=internal`)
+          }
         />
       </div>
     </Panel>
@@ -253,6 +256,7 @@ function ActionMenu({
   onCancel,
   onRetrain,
   onEmail,
+  onEmailInternal,
 }: {
   isNew: boolean;
   busy: boolean;
@@ -262,6 +266,7 @@ function ActionMenu({
   onCancel: () => void;
   onRetrain: () => void;
   onEmail: () => void;
+  onEmailInternal: () => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -317,6 +322,13 @@ function ActionMenu({
           chip: "bg-slate-100 text-slate-600",
           run: onEmail,
         },
+        {
+          id: "emailInternal",
+          labelKey: "detail.actionEmailInternal",
+          icon: <MailIcon className="h-4 w-4" />,
+          chip: "bg-sky-50 text-sky-600",
+          run: onEmailInternal,
+        },
       ]
     : [
         {
@@ -332,6 +344,13 @@ function ActionMenu({
           icon: <MailIcon className="h-4 w-4" />,
           chip: "bg-slate-100 text-slate-600",
           run: onEmail,
+        },
+        {
+          id: "emailInternal",
+          labelKey: "detail.actionEmailInternal",
+          icon: <MailIcon className="h-4 w-4" />,
+          chip: "bg-sky-50 text-sky-600",
+          run: onEmailInternal,
         },
       ];
 
@@ -410,6 +429,7 @@ function Panel({ children }: { children: ReactNode }) {
 function DetailsList({ anomaly }: { anomaly: Anomaly }) {
   const { t } = useI18n();
   const rows: Array<[string, string]> = [
+    [t("common.processRef"), dash(anomaly.processReference)],
     [t("common.order"), dash(anomaly.orderId)],
     [t("common.article"), dash(anomaly.articleName ?? anomaly.articleId)],
     [t("common.category"), dash(anomaly.articleCategory)],

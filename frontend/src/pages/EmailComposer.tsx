@@ -26,8 +26,12 @@ function errMsg(e: unknown, t: TFn): string {
 export function EmailComposer() {
   const { t, lang } = useI18n();
   const { id = "" } = useParams();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const internal = params.get("type") === "internal";
+
+  function setMode(nextInternal: boolean) {
+    setParams(nextInternal ? { type: "internal" } : {}, { replace: true });
+  }
 
   const { data: anomaly, isLoading, error } = useAnomaly(id);
   const me = useMe();
@@ -127,6 +131,15 @@ export function EmailComposer() {
               <h1 className="bg-gradient-to-t from-brand-dark to-[#be0000] bg-clip-text text-xl font-bold text-transparent">
                 {title}
               </h1>
+              {/* Recipient-type switch: supplier ↔ internal (Besteller) */}
+              <div className="ml-2 flex rounded-lg bg-[#e2e2e2] p-0.5 text-xs font-semibold">
+                <ModeTab active={!internal} onClick={() => setMode(false)}>
+                  {t("email.modeVendor")}
+                </ModeTab>
+                <ModeTab active={internal} onClick={() => setMode(true)}>
+                  {t("email.modeInternal")}
+                </ModeTab>
+              </div>
             </div>
             <button
               type="button"
@@ -205,9 +218,7 @@ export function EmailComposer() {
           onSave={saveSig}
           onRevert={() => setSigValue(savedSig)}
           onClear={() => setSigValue("")}
-          onSign={send}
           saving={setSig.isPending}
-          signing={sending}
           dirty={sigDirty}
         />
       </main>
@@ -235,6 +246,31 @@ function FieldRow({
         {children}
       </div>
     </div>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-md px-3 py-1 transition ${
+        active
+          ? "bg-white text-brand-dark shadow-sm"
+          : "text-[#6a6a6a] hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

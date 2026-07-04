@@ -7,15 +7,15 @@ interface SignaturePanelProps {
   onSave: () => void;
   onRevert: () => void;
   onClear: () => void;
-  onSign: () => void;
   saving?: boolean;
-  signing?: boolean;
   dirty?: boolean;
 }
 
 /**
- * Signature card (Figma frame 55, right side). The BFF stores the signature as
- * text (at_signatur), so it's edited as text and rendered in a script-like font.
+ * Signature card (Figma frame 55, right side). Pure signature management:
+ * saving writes at_signatur on the UserDetails row keyed by the signed-in
+ * email (at_userid) — it never triggers an email send. Sending happens only
+ * via the composer's own send button, which appends the saved signature.
  */
 export function SignaturePanel({
   value,
@@ -23,9 +23,7 @@ export function SignaturePanel({
   onSave,
   onRevert,
   onClear,
-  onSign,
   saving,
-  signing,
   dirty,
 }: SignaturePanelProps) {
   const { t } = useI18n();
@@ -44,22 +42,12 @@ export function SignaturePanel({
                    focus:border-brand focus:bg-white"
       />
 
-      <div className="flex items-center justify-between text-xs text-[#5a5a5a]">
-        <div className="flex items-center gap-4">
-          <button type="button" onClick={onRevert} className="flex items-center gap-1 hover:text-ink">
-            <BackIcon className="h-3.5 w-3.5" /> {t("signature.back")}
-          </button>
-          <button type="button" onClick={onClear} className="flex items-center gap-1 hover:text-ink">
-            <ClearFormatIcon className="h-3.5 w-3.5" /> {t("signature.clear")}
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saving || !dirty}
-          className="font-medium text-[#5a5a5a] hover:text-ink disabled:opacity-40"
-        >
-          {saving ? t("signature.saving") : t("signature.save")}
+      <div className="flex items-center gap-4 text-xs text-[#5a5a5a]">
+        <button type="button" onClick={onRevert} className="flex items-center gap-1 hover:text-ink">
+          <BackIcon className="h-3.5 w-3.5" /> {t("signature.back")}
+        </button>
+        <button type="button" onClick={onClear} className="flex items-center gap-1 hover:text-ink">
+          <ClearFormatIcon className="h-3.5 w-3.5" /> {t("signature.clear")}
         </button>
       </div>
 
@@ -67,18 +55,15 @@ export function SignaturePanel({
         {t("signature.hint")}
       </p>
 
-      <div className="mt-auto flex items-center justify-between pt-2">
-        <button type="button" className="text-xs text-[#a2a2a2] hover:text-ink" disabled>
-          {t("signature.manage")}
-        </button>
+      <div className="mt-auto flex justify-end pt-2">
         <button
           type="button"
-          onClick={onSign}
-          disabled={signing}
+          onClick={onSave}
+          disabled={saving || !dirty}
           className="rounded-md bg-gradient-to-b from-brand-dark to-[#910d0d] px-4 py-2 text-xs
-                     font-medium text-[#f7f7f7] shadow-sm transition hover:brightness-110 disabled:opacity-60"
+                     font-medium text-[#f7f7f7] shadow-sm transition hover:brightness-110 disabled:opacity-50"
         >
-          {signing ? t("common.sending") : t("signature.sign")}
+          {saving ? t("signature.saving") : t("signature.save")}
         </button>
       </div>
     </section>
