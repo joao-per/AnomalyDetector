@@ -44,7 +44,16 @@ def _now_iso() -> str:
 # ── Reads ────────────────────────────────────────────────────────────────────
 def list_anomalies(*, status: str | None = None, top: int = 200) -> list[dict]:
     a = fm.ANOMALY
-    flt = f"{a['status']} eq '{_esc(status)}'" if status else None
+    if status:
+        flt = f"{a['status']} eq '{_esc(status)}'"
+    else:
+        # Default view: hide untrained/cancelled records. They stay reachable
+        # via an explicit ?status= filter (e.g. the /untrained page).
+        s = a["status"]
+        flt = (
+            f"({s} eq null or ({s} ne '{fm.STATUS_UNTRAINED}' "
+            f"and {s} ne '{fm.STATUS_CANCELLED}'))"
+        )
     records = dataverse.list(
         fm.ANOMALY_ENTITY_SET,
         select=serializers.anomaly_select(),
