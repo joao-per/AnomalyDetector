@@ -7,6 +7,14 @@ export interface AnomalyPlots {
   categorical: string | null;
 }
 
+/** One anomalous feature combination (name may be missing in the data —
+ *  label it generically via `index`). Nulls are already filtered out. */
+export interface FeaturePair {
+  index: number;
+  name: string | null;
+  value: string | number;
+}
+
 export interface Anomaly {
   id: string;
   anomalieId: string | null;
@@ -26,6 +34,10 @@ export interface Anomaly {
   description1: string | null;
   description2: string | null;
   featureJson: string | null;
+
+  // anomalous feature combinations (details panel)
+  categoricalFeatures: FeaturePair[];
+  numericalFeatures: FeaturePair[];
 
   plots: AnomalyPlots;
 

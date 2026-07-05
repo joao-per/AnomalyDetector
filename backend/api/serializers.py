@@ -8,6 +8,29 @@ from __future__ import annotations
 from . import field_maps as fm
 
 
+def _feature_pairs(record: dict, pairs: list[tuple[str, str]]) -> list[dict]:
+    """Anomalous feature name/value combinations for the details panel.
+
+    A pair is shown iff its VALUE is non-null (client rule 2026-07-05). Two
+    data quirks: the ETL writes 0.0 into unused numeric value slots (no
+    feature name) — that is filler, not a finding, so it is dropped; and some
+    rows carry a value without a name — kept, the frontend labels them
+    generically via `index`.
+    """
+    out: list[dict] = []
+    for idx, (name_col, value_col) in enumerate(pairs, start=1):
+        value = record.get(value_col)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            continue
+        name = record.get(name_col)
+        if isinstance(name, str):
+            name = name.strip() or None
+        if name is None and isinstance(value, (int, float)) and value == 0:
+            continue
+        out.append({"index": idx, "name": name, "value": value})
+    return out
+
+
 def map_anomaly(record: dict) -> dict:
     """Dataverse anomaly record -> clean API shape (camelCase)."""
     a = fm.ANOMALY
@@ -29,6 +52,23 @@ def map_anomaly(record: dict) -> dict:
         "description1": g(a["description1"]),
         "description2": g(a["description2"]),
         "featureJson": g(a["feature_json"]),
+        # anomalous feature combinations (nulls already filtered out)
+        "categoricalFeatures": _feature_pairs(
+            record,
+            [
+                (a["cat_feature1"], a["cat_feature1_value"]),
+                (a["cat_feature2"], a["cat_feature2_value"]),
+                (a["cat_feature3"], a["cat_feature3_value"]),
+            ],
+        ),
+        "numericalFeatures": _feature_pairs(
+            record,
+            [
+                (a["num_feature1"], a["num_feature1_value"]),
+                (a["num_feature2"], a["num_feature2_value"]),
+                (a["num_feature3"], a["num_feature3_value"]),
+            ],
+        ),
         # plots
         "plots": {
             "standard": g(a["plot_standard_url"]),
@@ -68,6 +108,10 @@ def anomaly_select() -> list[str]:
         "anomaly_type", "process_reference", "match_class", "match_explanation",
         "criticality", "criticality_class", "score",
         "description1", "description2", "feature_json",
+        "cat_feature1", "cat_feature1_value", "cat_feature2", "cat_feature2_value",
+        "cat_feature3", "cat_feature3_value",
+        "num_feature1", "num_feature1_value", "num_feature2", "num_feature2_value",
+        "num_feature3", "num_feature3_value",
         "plot_standard_url", "plot_enhanced_url", "plot_categorical_url",
         "vendor_name", "vendor_email", "vendor_phone", "supplier_id",
         "besteller_email", "besteller",

@@ -37,6 +37,21 @@ ANOMALY = {
     "description1": "at_anomalydescription1",
     "description2": "at_anomalydescription2",
     "feature_json": "at_featurejson",
+    # anomalous feature combinations (details panel, client mock 2026-07-05):
+    # up to 3 categorical and 3 numerical name/value pairs. Note the numerical
+    # VALUE columns use the cr062_ publisher prefix.
+    "cat_feature1": "at_catfeature1",
+    "cat_feature1_value": "at_catfeature1value",
+    "cat_feature2": "at_catfeature2",
+    "cat_feature2_value": "at_catfeature2value",
+    "cat_feature3": "at_catfeature3",
+    "cat_feature3_value": "at_catfeature3value",
+    "num_feature1": "at_feature1",
+    "num_feature1_value": "cr062_featurewert1",
+    "num_feature2": "at_feature2",
+    "num_feature2_value": "cr062_featurewert2",
+    "num_feature3": "at_feature3",
+    "num_feature3_value": "cr062_featurewert3",
     # plots (Blob URLs, with SAS already appended)
     "plot_standard_url": "at_plotdescription",
     "plot_enhanced_url": "at_plot_html_enhanced",

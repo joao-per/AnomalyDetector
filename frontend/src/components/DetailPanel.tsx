@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import type { Anomaly } from "@/api/types";
+import type { Anomaly, FeaturePair } from "@/api/types";
 import { STATUS } from "@/api/types";
 import { ApiError } from "@/api/client";
 import {
@@ -10,10 +10,9 @@ import {
   useRetrainAnomaly,
   useUntrainAnomaly,
 } from "@/api/hooks";
-import { dash, formatDate, permille, scoreFraction } from "@/lib/format";
+import { dash, formatDate } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
-import { ScoreGauge } from "./ScoreGauge";
 import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { CriticalityMeter } from "./CriticalityMeter";
@@ -85,7 +84,6 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
   }
 
   const isNew = (anomaly.status ?? "").trim() === STATUS.NEW;
-  const frac = scoreFraction(anomaly.score);
   const needComment = comment.trim().length === 0;
 
   function runClose() {
@@ -144,14 +142,9 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
           <StatusBadge status={anomaly.status} />
         </div>
 
-        {/* Gauge */}
-        <div className="flex flex-col items-center">
-          <ScoreGauge
-            fraction={frac}
-            label={permille(frac)}
-            caption={t("common.score")}
-          />
-        </div>
+        {/* Anomalous feature combinations (replaces the score gauge —
+            client feedback 2026-07-05: the score is not useful here) */}
+        <FeatureHighlights anomaly={anomaly} />
 
         {/* Criticality "on tap" meter */}
         <CriticalityMeter anomaly={anomaly} />
@@ -414,6 +407,63 @@ function ActionMenu({
           className={`h-4 w-4 transition-transform duration-200 ${open ? "" : "rotate-180"}`}
         />
       </button>
+    </div>
+  );
+}
+
+// ── Anomalous feature combinations ───────────────────────────────────────────
+function formatFeatureValue(value: string | number, lang: string): string {
+  if (typeof value === "number") {
+    return new Intl.NumberFormat(lang === "de" ? "de-AT" : "en-GB", {
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+  return value;
+}
+
+function FeatureHighlights({ anomaly }: { anomaly: Anomaly }) {
+  const { t, lang } = useI18n();
+  const groups = [
+    { key: "cat", titleKey: "detail.catFeatures" as TranslationKey, items: anomaly.categoricalFeatures },
+    { key: "num", titleKey: "detail.numFeatures" as TranslationKey, items: anomaly.numericalFeatures },
+  ].filter((g) => g.items.length > 0);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <div
+          key={g.key}
+          className="rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/15"
+        >
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/60">
+            {t(g.titleKey)}
+          </h3>
+          <div className="space-y-1.5">
+            {g.items.map((f: FeaturePair) => {
+              const label = f.name ?? t("detail.featureFallback", { n: f.index });
+              const value = formatFeatureValue(f.value, lang);
+              return (
+                <div
+                  key={f.index}
+                  className="flex items-center justify-between gap-3 rounded-lg bg-white/95 px-3 py-1.5 text-sm"
+                >
+                  <span className="min-w-0 flex-1 truncate text-muted" title={label}>
+                    {label}
+                  </span>
+                  <span
+                    className="max-w-[55%] truncate text-right font-semibold text-ink"
+                    title={value}
+                  >
+                    {value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
