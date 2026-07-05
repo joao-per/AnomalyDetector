@@ -110,7 +110,8 @@ with status `Abtrainiert`, grouped by creation date, with a Retrain action),
   handle its own side-effects (including the untrain feedback insert).
 - **The default anomaly list hides `Abtrainiert` and `abgebrochen`** (server-side OData filter
   in `list_anomalies`); an explicit `?status=` query still returns them (the `/untrained` page
-  relies on this). The details panel's "Was ist passiert" shows `at_anomalydescription1` only —
+  relies on this). Independently, `HIDDEN_ARTICLE_CATEGORIES` (default `PFANDART`) is excluded
+  from EVERY list, status filter or not. The details panel's "Was ist passiert" shows `at_anomalydescription1` only —
   `at_matchexplanation` is deliberately not surfaced (too technical for the ops team).
 - **Secrets live only in `.env` files** (gitignored). `DATAVERSE_CLIENT_SECRET` and the flow
   URLs must never be committed.

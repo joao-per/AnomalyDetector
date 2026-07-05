@@ -121,6 +121,10 @@ DATAVERSE_CLIENT_SECRET = env("DATAVERSE_CLIENT_SECRET")
 # sendMail (see GRAPH_SENDER_UPN below). EMAIL_ACTIONS_ENABLED=false turns the
 # generate/send endpoints into HTTP 501 (kill switch).
 EMAIL_ACTIONS_ENABLED = env_bool("EMAIL_ACTIONS_ENABLED", True)
+
+# Article categories that must never appear in the anomaly lists (client
+# request 2026-07-05: hide PFANDART / deposit articles). Comma-separated.
+HIDDEN_ARTICLE_CATEGORIES = env_list("HIDDEN_ARTICLE_CATEGORIES", "PFANDART")
 GENERATE_EMAIL_FLOW_URL = env("GENERATE_EMAIL_FLOW_URL")
 EXTERNAL_EMAIL_FLOW_URL = env("EXTERNAL_EMAIL_FLOW_URL")
 INTERNAL_EMAIL_FLOW_URL = env("INTERNAL_EMAIL_FLOW_URL")

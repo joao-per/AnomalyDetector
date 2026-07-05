@@ -44,16 +44,26 @@ def _now_iso() -> str:
 # ── Reads ────────────────────────────────────────────────────────────────────
 def list_anomalies(*, status: str | None = None, top: int = 200) -> list[dict]:
     a = fm.ANOMALY
+    parts: list[str] = []
     if status:
-        flt = f"{a['status']} eq '{_esc(status)}'"
+        parts.append(f"{a['status']} eq '{_esc(status)}'")
     else:
         # Default view: hide untrained/cancelled records. They stay reachable
         # via an explicit ?status= filter (e.g. the /untrained page).
         s = a["status"]
-        flt = (
+        parts.append(
             f"({s} eq null or ({s} ne '{fm.STATUS_UNTRAINED}' "
             f"and {s} ne '{fm.STATUS_CANCELLED}'))"
         )
+    # Hidden article categories (e.g. PFANDART) are excluded from EVERY list,
+    # regardless of the status filter.
+    if settings.HIDDEN_ARTICLE_CATEGORIES:
+        c = a["article_category"]
+        clauses = " and ".join(
+            f"{c} ne '{_esc(cat)}'" for cat in settings.HIDDEN_ARTICLE_CATEGORIES
+        )
+        parts.append(f"({c} eq null or ({clauses}))")
+    flt = " and ".join(parts)
     records = dataverse.list(
         fm.ANOMALY_ENTITY_SET,
         select=serializers.anomaly_select(),
