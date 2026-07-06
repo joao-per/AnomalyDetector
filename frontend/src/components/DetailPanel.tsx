@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Anomaly, FeaturePair } from "@/api/types";
@@ -53,11 +53,27 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
   const busy =
     close.isPending || untrain.isPending || cancel.isPending || retrain.isPending;
 
+  // "More content below" cue for the scrollable details area — on small
+  // screens the lower cards would otherwise look silently cut off.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const updateScrollCue = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 8);
+  }, []);
+  useEffect(() => {
+    window.addEventListener("resize", updateScrollCue);
+    return () => window.removeEventListener("resize", updateScrollCue);
+  }, [updateScrollCue]);
+
   // Reset transient UI when the selected anomaly changes.
   useEffect(() => {
     setComment("");
     setNotice(null);
-  }, [anomaly?.id]);
+    scrollRef.current?.scrollTo({ top: 0 });
+    updateScrollCue();
+  }, [anomaly?.id, updateScrollCue]);
 
   if (!anomaly && !loading) {
     return (
@@ -129,7 +145,13 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
 
   return (
     <Panel>
-      <div className="scroll-slim on-red flex h-full flex-col gap-4 overflow-y-auto px-5 py-5">
+      {/* Scrollable details — comment + actions stay pinned below */}
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollRef}
+          onScroll={updateScrollCue}
+          className="scroll-slim on-red flex h-full flex-col gap-4 overflow-y-auto px-5 py-5"
+        >
         {/* Identity header — supplier logo + anomaly id + status */}
         <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-inset ring-white/15 backdrop-blur-sm">
           <SupplierAvatar name={anomaly.vendorName} className="h-11 w-11" />
@@ -193,8 +215,19 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
 
         {/* Details list */}
         <DetailsList anomaly={anomaly} />
+        </div>
 
-        {/* Comment */}
+        {/* "More content below" fade cue */}
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t
+                      from-black/45 to-transparent transition-opacity duration-300
+                      ${moreBelow ? "opacity-100" : "opacity-0"}`}
+        />
+      </div>
+
+      {/* Pinned footer: comment + actions are always reachable */}
+      <div className="space-y-3 border-t border-white/15 px-5 pb-5 pt-3">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wide text-white/70">
             {t("detail.comment")}{" "}
@@ -203,14 +236,13 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            rows={3}
+            rows={2}
             placeholder={t("detail.commentPlaceholder")}
             className="w-full resize-none rounded-xl border border-white/20 bg-white/95 px-3 py-2 text-sm text-ink
                        outline-none placeholder:text-muted focus:border-white"
           />
         </div>
 
-        {/* Notice */}
         {notice && (
           <div
             className={`rounded-xl px-3 py-2 text-sm ${
@@ -223,7 +255,6 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
           </div>
         )}
 
-        {/* Actions */}
         <ActionMenu
           isNew={isNew}
           busy={busy}
@@ -360,7 +391,7 @@ function ActionMenu({
       ];
 
   return (
-    <div ref={rootRef} className="relative mt-auto pt-1">
+    <div ref={rootRef} className="relative">
       {open && (
         <div
           role="menu"
