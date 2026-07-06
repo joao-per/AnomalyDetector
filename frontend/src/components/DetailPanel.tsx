@@ -530,7 +530,9 @@ function DetailsList({ anomaly }: { anomaly: Anomaly }) {
     [t("common.createdAt"), formatDate(anomaly.createdOn)],
   ];
   return (
-    <div className="overflow-hidden rounded-xl bg-white/95 text-sm">
+    // shrink-0: overflow-hidden zeroes this card's min flex size, so without
+    // it the tight flex column squashes the whole table to 0px height.
+    <div className="shrink-0 overflow-hidden rounded-xl bg-white/95 text-sm">
       {rows.map(([k, v], i) => (
         <div
           key={k}
