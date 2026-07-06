@@ -6,6 +6,7 @@ import type { TranslationKey } from "@/i18n/translations";
 import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { ChevronDownIcon } from "./icons";
+import navLogo from "@/assets/dynamics-nav.png";
 
 export type SortKey =
   | "anomalieId"
@@ -83,7 +84,7 @@ const COLUMNS: Column[] = [
 ];
 
 const GRID =
-  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr] gap-3 items-center";
+  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_2.5rem] gap-3 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
@@ -141,6 +142,8 @@ export function AnomalyTable({
             </button>
           );
         })}
+        {/* NAV-link column has no header label */}
+        <span aria-hidden />
       </div>
 
       {/* Body */}
@@ -158,11 +161,20 @@ export function AnomalyTable({
           anomalies.map((a, i) => {
             const selected = a.id === selectedId;
             return (
-              <button
+              // div-with-button-role instead of <button>: the row contains the
+              // NAV deep link (<a>), and interactive elements must not nest.
+              <div
                 key={a.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelect(a)}
-                className={`${GRID} w-full px-7 py-4 text-sm transition
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(a);
+                  }
+                }}
+                className={`${GRID} w-full cursor-pointer px-7 py-4 text-sm transition
                   ${selected
                     ? "bg-red-50 ring-1 ring-inset ring-brand/30"
                     : i % 2 === 1
@@ -174,11 +186,33 @@ export function AnomalyTable({
                     {col.render(a)}
                   </Cell>
                 ))}
-              </button>
+                <NavLinkButton href={a.navOrderLink} />
+              </div>
             );
           })}
       </div>
     </div>
+  );
+}
+
+/** Opens the anomaly's order in Dynamics NAV (at_navorderlink, a
+ *  dynamicsnav:// deep link handled by the NAV client). */
+function NavLinkButton({ href }: { href: string | null }) {
+  const { t } = useI18n();
+  if (!href) return <span aria-hidden />;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title={t("table.openNav")}
+      aria-label={t("table.openNav")}
+      className="grid h-8 w-8 shrink-0 place-items-center justify-self-center rounded-lg bg-white
+                 ring-1 ring-line shadow-sm transition hover:scale-105 hover:ring-brand"
+    >
+      <img src={navLogo} alt="" className="h-6 w-6 object-contain" />
+    </a>
   );
 }
 

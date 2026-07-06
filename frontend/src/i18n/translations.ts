@@ -63,6 +63,7 @@ const de = {
   "table.error": "Fehler beim Laden: {error}",
   "table.empty": "Keine Anomalien gefunden.",
   "table.sortBy": "Nach „{label}“ sortieren",
+  "table.openNav": "Bestellung in Dynamics NAV öffnen",
 
   // ── Status badge ─────────────────────────────────────────────────
   "status.new": "Neu",
@@ -222,6 +223,7 @@ const en: Record<TranslationKey, string> = {
   "table.error": "Error loading: {error}",
   "table.empty": "No anomalies found.",
   "table.sortBy": "Sort by “{label}”",
+  "table.openNav": "Open order in Dynamics NAV",
 
   // ── Status badge ─────────────────────────────────────────────────
   "status.new": "New",
