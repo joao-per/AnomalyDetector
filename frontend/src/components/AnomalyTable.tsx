@@ -196,15 +196,15 @@ export function AnomalyTable({
 }
 
 /** Opens the anomaly's order in Dynamics NAV (at_navorderlink, a
- *  dynamicsnav:// deep link handled by the NAV client). */
+ *  dynamicsnav:// deep link handled by the NAV client). No target="_blank":
+ *  custom-protocol links would leave an about:blank tab behind — assigning
+ *  location hands the URL to the OS handler while the page stays put. */
 function NavLinkButton({ href }: { href: string | null }) {
   const { t } = useI18n();
   if (!href) return <span aria-hidden />;
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
       title={t("table.openNav")}
       aria-label={t("table.openNav")}
