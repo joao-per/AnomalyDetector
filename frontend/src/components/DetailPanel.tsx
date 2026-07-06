@@ -170,13 +170,25 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
         </div>
 
         {/* Plot buttons */}
-        <div className="flex gap-2">
-          <PlotButton href={anomaly.plots.standard} variant="light">
-            {t("detail.plotStandard")}
-          </PlotButton>
-          <PlotButton href={anomaly.plots.enhanced} variant="solid">
-            {t("detail.plotEnhanced")}
-          </PlotButton>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <PlotButton href={anomaly.plots.standard} variant="light">
+              {t("detail.plotStandard")}
+            </PlotButton>
+            <PlotButton href={anomaly.plots.enhanced} variant="solid">
+              {t("detail.plotEnhanced")}
+            </PlotButton>
+          </div>
+          {/* Categorical-analysis plot — must be visible whenever categorical
+              anomalies come up (client feedback 2026-07-06); emphasized then. */}
+          {anomaly.plots.categorical && (
+            <PlotButton
+              href={anomaly.plots.categorical}
+              variant={anomaly.categoricalFeatures.length > 0 ? "light" : "solid"}
+            >
+              {t("detail.plotCategorical")}
+            </PlotButton>
+          )}
         </div>
 
         {/* Details list */}
