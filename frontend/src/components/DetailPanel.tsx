@@ -20,8 +20,10 @@ import {
   ChevronDownIcon,
   DangerTriangleIcon,
   EyeOffIcon,
+  HashIcon,
   MailIcon,
   ProgressIcon,
+  TagIcon,
   XCircleIcon,
 } from "./icons";
 
@@ -54,13 +56,16 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
     close.isPending || untrain.isPending || cancel.isPending || retrain.isPending;
 
   // "More content below" cue for the scrollable details area — on small
-  // screens the lower cards would otherwise look silently cut off.
+  // screens the lower cards would otherwise look silently cut off. `scrolled`
+  // drives the pinned header's elevation shadow.
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [moreBelow, setMoreBelow] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const updateScrollCue = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     setMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 8);
+    setScrolled(el.scrollTop > 4);
   }, []);
   useEffect(() => {
     window.addEventListener("resize", updateScrollCue);
@@ -145,34 +150,47 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
 
   return (
     <Panel>
+      {/* Pinned identity header — stays put while the details scroll.
+          Gains a shadow + blur once the content underneath starts moving. */}
+      <div
+        className={`relative z-10 flex items-center gap-3 border-b px-5 pb-3.5 pt-4 transition-all duration-300 ${
+          scrolled
+            ? "border-white/15 bg-black/20 shadow-[0_12px_24px_rgba(0,0,0,0.35)] backdrop-blur-md"
+            : "border-white/10"
+        }`}
+      >
+        <SupplierAvatar name={anomaly.vendorName} className="h-11 w-11" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-base font-bold leading-tight text-white">
+            {dash(anomaly.anomalieId)}
+          </div>
+          <div className="truncate text-xs text-white/70">{dash(anomaly.vendorName)}</div>
+        </div>
+        <StatusBadge status={anomaly.status} />
+      </div>
+
       {/* Scrollable details — comment + actions stay pinned below */}
       <div className="relative min-h-0 flex-1">
         <div
+          key={anomaly.id /* remount on selection → entrance animation replays */}
           ref={scrollRef}
           onScroll={updateScrollCue}
-          className="scroll-slim on-red flex h-full flex-col gap-4 overflow-y-auto px-5 py-5"
+          className="scroll-slim on-red flex h-full flex-col gap-4 overflow-y-auto px-5 py-4"
         >
-        {/* Identity header — supplier logo + anomaly id + status */}
-        <div className="flex items-center gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-inset ring-white/15 backdrop-blur-sm">
-          <SupplierAvatar name={anomaly.vendorName} className="h-11 w-11" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-bold leading-tight text-white">
-              {dash(anomaly.anomalieId)}
-            </div>
-            <div className="truncate text-xs text-white/70">{dash(anomaly.vendorName)}</div>
-          </div>
-          <StatusBadge status={anomaly.status} />
-        </div>
-
         {/* Anomalous feature combinations (replaces the score gauge —
             client feedback 2026-07-05: the score is not useful here) */}
         <FeatureHighlights anomaly={anomaly} />
 
         {/* Criticality "on tap" meter */}
-        <CriticalityMeter anomaly={anomaly} />
+        <div className="rise-in" style={{ animationDelay: "120ms" }}>
+          <CriticalityMeter anomaly={anomaly} />
+        </div>
 
         {/* Alert badge */}
-        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-brand-dark shadow">
+        <div
+          className="rise-in flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-brand-dark shadow"
+          style={{ animationDelay: "180ms" }}
+        >
           <DangerTriangleIcon className="h-5 w-5 shrink-0 text-brand" />
           <span className="text-sm font-semibold">
             {t("detail.detected", { type: dash(anomaly.anomalyType) })}
@@ -180,7 +198,10 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
         </div>
 
         {/* Explanation card */}
-        <div className="rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/15">
+        <div
+          className="rise-in rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/15"
+          style={{ animationDelay: "240ms" }}
+        >
           <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-white/60">
             {t("detail.whatHappened")}
           </h3>
@@ -192,7 +213,7 @@ export function DetailPanel({ anomaly, loading }: DetailPanelProps) {
         </div>
 
         {/* Plot buttons */}
-        <div className="flex flex-col gap-2">
+        <div className="rise-in flex flex-col gap-2" style={{ animationDelay: "300ms" }}>
           <div className="flex gap-2">
             <PlotButton href={anomaly.plots.standard} variant="light">
               {t("detail.plotStandard")}
@@ -465,48 +486,102 @@ function formatFeatureValue(value: string | number, lang: string): string {
 }
 
 function FeatureHighlights({ anomaly }: { anomaly: Anomaly }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const groups = [
-    { key: "cat", titleKey: "detail.catFeatures" as TranslationKey, items: anomaly.categoricalFeatures },
-    { key: "num", titleKey: "detail.numFeatures" as TranslationKey, items: anomaly.numericalFeatures },
+    {
+      key: "cat",
+      titleKey: "detail.catFeatures" as TranslationKey,
+      icon: <TagIcon className="h-3.5 w-3.5" />,
+      tint: "bg-amber-400/25 text-amber-300",
+      items: anomaly.categoricalFeatures,
+      body: <CatChips items={anomaly.categoricalFeatures} />,
+    },
+    {
+      key: "num",
+      titleKey: "detail.numFeatures" as TranslationKey,
+      icon: <HashIcon className="h-3.5 w-3.5" />,
+      tint: "bg-sky-400/25 text-sky-300",
+      items: anomaly.numericalFeatures,
+      body: <NumStats items={anomaly.numericalFeatures} />,
+    },
   ].filter((g) => g.items.length > 0);
 
   if (groups.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      {groups.map((g) => (
-        <div
+    <>
+      {groups.map((g, gi) => (
+        <section
           key={g.key}
-          className="rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/15"
+          className="rise-in rounded-2xl bg-white/10 p-3.5 ring-1 ring-inset ring-white/15"
+          style={{ animationDelay: `${gi * 60}ms` }}
         >
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/60">
+          <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-white/70">
+            <span className={`grid h-6 w-6 place-items-center rounded-lg ${g.tint}`}>
+              {g.icon}
+            </span>
             {t(g.titleKey)}
+            <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-white/80">
+              {g.items.length}
+            </span>
           </h3>
-          <div className="space-y-1.5">
-            {g.items.map((f: FeaturePair) => {
-              const label = f.name ?? t("detail.featureFallback", { n: f.index });
-              const value = formatFeatureValue(f.value, lang);
-              return (
-                <div
-                  key={f.index}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-white/95 px-3 py-1.5 text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate text-muted" title={label}>
-                    {label}
-                  </span>
-                  <span
-                    className="max-w-[55%] truncate text-right font-semibold text-ink"
-                    title={value}
-                  >
-                    {value}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          {g.body}
+        </section>
       ))}
+    </>
+  );
+}
+
+/** Categorical findings as chips. A raw value of "True" only means "this flag
+ *  fired", so it renders as a localized "detected" badge instead. */
+function CatChips({ items }: { items: FeaturePair[] }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((f) => {
+        const label = f.name ?? t("detail.featureFallback", { n: f.index });
+        const flag =
+          typeof f.value === "string" && f.value.trim().toLowerCase() === "true";
+        const value = flag ? t("detail.featureFlag") : String(f.value);
+        return (
+          <span
+            key={f.index}
+            title={`${label}: ${value}`}
+            className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/95 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-ink shadow-sm"
+          >
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+            <span className="truncate">{label}</span>
+            <span className="shrink-0 rounded-full bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-dark">
+              {value}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Numerical findings as compact stat rows: label left, big value right. */
+function NumStats({ items }: { items: FeaturePair[] }) {
+  const { t, lang } = useI18n();
+  return (
+    <div className="space-y-1.5">
+      {items.map((f) => {
+        const label = f.name ?? t("detail.featureFallback", { n: f.index });
+        return (
+          <div
+            key={f.index}
+            className="flex items-center justify-between gap-3 rounded-xl bg-white/95 px-3 py-2 shadow-sm"
+          >
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted" title={label}>
+              {label}
+            </span>
+            <span className="shrink-0 text-base font-bold leading-none tabular-nums text-brand-dark">
+              {formatFeatureValue(f.value, lang)}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -530,22 +605,27 @@ function DetailsList({ anomaly }: { anomaly: Anomaly }) {
     [t("common.createdAt"), formatDate(anomaly.createdOn)],
   ];
   return (
-    // shrink-0: overflow-hidden zeroes this card's min flex size, so without
-    // it the tight flex column squashes the whole table to 0px height.
-    <div className="shrink-0 overflow-hidden rounded-xl bg-white/95 text-sm">
-      {rows.map(([k, v], i) => (
-        <div
-          key={k}
-          className={`flex items-center justify-between gap-3 px-3 py-2 ${
-            i % 2 ? "bg-surface" : "bg-white"
-          }`}
-        >
-          <span className="text-muted">{k}</span>
-          <span className="truncate text-right font-medium text-ink" title={v}>
-            {v}
-          </span>
-        </div>
-      ))}
+    // Spec-sheet grid: 2 columns of label-over-value cells with hairlines
+    // (gap-px over a line-colored backdrop). shrink-0: overflow-hidden zeroes
+    // this card's min flex size — without it the tight flex column squashes
+    // the whole table to 0px height.
+    <div className="shrink-0 overflow-hidden rounded-xl bg-white/95 shadow-sm">
+      <div className="grid grid-cols-2 gap-px bg-line/80">
+        {rows.map(([k, v], i) => (
+          <div
+            key={k}
+            className="rise-in bg-white px-3 py-2"
+            style={{ animationDelay: `${360 + i * 45}ms` }}
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+              {k}
+            </div>
+            <div className="truncate text-sm font-semibold text-ink" title={v}>
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
