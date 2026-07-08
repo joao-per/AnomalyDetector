@@ -304,7 +304,14 @@ def explain_anomaly(guid: str) -> dict:
     )
     answer = None
     if isinstance(result, dict):
-        answer = result.get("Antwort") or result.get("antwort") or result.get("answer")
+        # The Response action is named "Antwort"; its declared body field is
+        # "explanation". Accept both spellings defensively.
+        answer = (
+            result.get("explanation")
+            or result.get("Antwort")
+            or result.get("antwort")
+            or result.get("answer")
+        )
     return {"answer": answer, "raw": result}
 
 
