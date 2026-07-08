@@ -42,6 +42,7 @@ export interface Anomaly {
   plots: AnomalyPlots;
 
   // parties
+  owner: string | null;
   vendorName: string | null;
   vendorEmail: string | null;
   vendorPhone: string | null;
@@ -60,9 +61,10 @@ export interface Anomaly {
   draftVendorEmail: string | null;
   draftInternalEmail: string | null;
 
-  // comments
+  // comments / audit trail
   commentDone: string | null;
   commentAcceptance: string | null;
+  changeHistory: string | null;
 
   // system
   createdOn: string | null;

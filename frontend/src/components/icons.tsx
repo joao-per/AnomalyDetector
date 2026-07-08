@@ -110,6 +110,17 @@ export function ProgressIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}
+      strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5" />
+      <path d="M3.5 4v4.5H8" />
+      <path d="M12 8v4.5l3 1.8" />
+    </svg>
+  );
+}
+
 export function TagIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}

@@ -47,7 +47,7 @@ export function Login() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0b0304]">
+    <div className="relative min-h-screen overflow-hidden bg-white">
       {/* Living backdrop — reacts to the pointer */}
       <div className="absolute inset-0">
         <Ferrofluid
@@ -60,16 +60,17 @@ export function Login() {
           sharpness={2.6}
           shimmer={1.4}
           glow={1.7}
-          opacity={0.85}
+          opacity={1}
           flowDirection="down"
           mouseRadius={0.3}
+          mixBlendMode="multiply"
         />
       </div>
       {/* Soft vignette so the form area stays calm */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(11,3,4,0.72)_0%,rgba(11,3,4,0.35)_42%,transparent_72%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(200,200,200,0)_0%,rgba(180,180,180,0.15)_50%,rgba(150,150,150,0.3)_100%)]" />
 
       {/* Language switch */}
-      <div className="absolute right-6 top-6 z-20 flex items-center rounded-full bg-white/10 p-1 ring-1 ring-white/15 backdrop-blur-md">
+      <div className="absolute right-6 top-6 z-20 flex items-center rounded-full bg-black/5 p-1 ring-1 ring-black/10 backdrop-blur-md">
         {(["de", "en"] as Lang[]).map((l) => (
           <button
             key={l}
@@ -77,7 +78,7 @@ export function Login() {
             onClick={() => setLang(l)}
             aria-pressed={lang === l}
             className={`rounded-full px-3 py-1 text-xs font-semibold uppercase transition ${
-              lang === l ? "bg-brand text-white shadow-sm" : "text-white/50 hover:text-white"
+              lang === l ? "bg-brand text-white shadow-sm" : "text-black/40 hover:text-black"
             }`}
           >
             {l}
@@ -88,20 +89,20 @@ export function Login() {
       <main className="relative z-10 grid min-h-screen place-items-center p-6">
         <form
           onSubmit={submit}
-          className="w-full max-w-sm rounded-3xl bg-white/[0.07] p-8 shadow-2xl ring-1 ring-white/15 backdrop-blur-xl"
+          className="w-full max-w-sm rounded-3xl bg-white/80 p-8 shadow-2xl ring-1 ring-black/10 backdrop-blur-xl"
         >
           <div className="mx-auto w-fit rounded-2xl bg-white px-4 py-2 shadow-lg">
             <img src={logo} alt="Stiegl" className="h-12 w-auto select-none" draggable={false} />
           </div>
 
-          <h1 className="mt-5 text-center font-sans text-2xl font-bold text-white">
+          <h1 className="mt-5 text-center font-sans text-2xl font-bold text-gray-900">
             {t("login.title")}
           </h1>
-          <p className="mt-1 text-center text-sm text-white/55">{t("login.subtitle")}</p>
+          <p className="mt-1 text-center text-sm text-gray-500">{t("login.subtitle")}</p>
 
           <div className="mt-7 space-y-4">
             <label className="block">
-              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-white/50">
+              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-gray-600">
                 {t("login.email")}
               </span>
               <input
@@ -112,12 +113,12 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@stiegl.at"
-                className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white
-                           outline-none transition placeholder:text-white/30 focus:border-brand focus:bg-white/[0.14]"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
+                           outline-none transition placeholder:text-gray-400 focus:border-brand focus:bg-white"
               />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-white/50">
+              <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-gray-600">
                 {t("login.password")}
               </span>
               <input
@@ -127,8 +128,8 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-white
-                           outline-none transition placeholder:text-white/30 focus:border-brand focus:bg-white/[0.14]"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900
+                           outline-none transition placeholder:text-gray-400 focus:border-brand focus:bg-white"
               />
             </label>
 
@@ -151,7 +152,7 @@ export function Login() {
         </form>
       </main>
 
-      <p className="absolute inset-x-0 bottom-5 z-10 text-center text-xs text-white/35">
+      <p className="absolute inset-x-0 bottom-5 z-10 text-center text-xs text-gray-400">
         Stiegl · {t("login.title")}
       </p>
     </div>

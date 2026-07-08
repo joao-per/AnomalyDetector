@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { anomaliesApi } from "@/api/anomalies";
@@ -11,7 +11,6 @@ import { PageShell } from "@/components/PageShell";
 import { AnomalyCard } from "@/components/AnomalyCard";
 import { SignaturePanel } from "@/components/SignaturePanel";
 import { ArrowLeftIcon, SparklesIcon, UserIcon } from "@/components/icons";
-import { internalTemplate, vendorTemplate } from "@/lib/emailTemplate";
 
 type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
@@ -24,7 +23,7 @@ function errMsg(e: unknown, t: TFn): string {
 }
 
 export function EmailComposer() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const { id = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const internal = params.get("type") === "internal";
@@ -46,15 +45,23 @@ export function EmailComposer() {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // Seed the form once the anomaly loads (or when switching anomaly / type / language).
+  // Seed the form and IMMEDIATELY request the AI suggestion (client feedback
+  // 2026-07-07: no static template — the draft should appear on its own).
+  // The ref guards against duplicate flow calls per (anomaly, mode) pair.
+  const autoDraftKey = useRef<string | null>(null);
   useEffect(() => {
     if (!anomaly) return;
     setTo((internal ? anomaly.bestellerEmail : anomaly.vendorEmail) ?? "");
     setSubject(t("email.subjectDefault", { id: anomaly.anomalieId ?? "" }).trim());
-    setBody(internal ? internalTemplate(anomaly, lang) : vendorTemplate(anomaly, lang));
     setNotice(null);
+    const key = `${anomaly.id}:${internal}`;
+    if (autoDraftKey.current !== key) {
+      autoDraftKey.current = key;
+      setBody("");
+      void generate();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anomaly?.id, internal, lang]);
+  }, [anomaly?.id, internal]);
 
   // Seed the signature editor from the stored signature.
   const savedSig = sigQuery.data?.signature ?? "";
@@ -179,14 +186,31 @@ export function EmailComposer() {
             </FieldRow>
           </div>
 
-          {/* Body */}
-          <div className="min-h-0 flex-1 px-7 pb-5 pt-4">
+          {/* Body — while the AI suggestion is being drafted, a shimmer
+              overlay sits on top of the (empty) textarea */}
+          <div className="relative min-h-0 flex-1 px-7 pb-5 pt-4">
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              readOnly={generating && !body}
               className="scroll-slim h-full w-full resize-none rounded-2xl border border-line bg-white px-5 py-4
                          text-sm leading-relaxed text-ink outline-none focus:border-brand"
             />
+            {generating && !body && (
+              <div className="pointer-events-none absolute inset-x-7 inset-y-4 bottom-5 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/85 backdrop-blur-[2px]">
+                <SparklesIcon className="h-7 w-7 animate-pulse text-brand" />
+                <span className="text-sm font-medium text-muted">{t("email.drafting")}</span>
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand/60"
+                      style={{ animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -203,7 +227,7 @@ export function EmailComposer() {
             <button
               type="button"
               onClick={send}
-              disabled={sending || !anomaly}
+              disabled={sending || generating || !anomaly}
               className="rounded-lg bg-gradient-to-b from-brand-dark to-[#910d0d] px-6 py-2.5 text-sm
                          font-semibold text-[#f7f7f7] shadow transition hover:brightness-110 disabled:opacity-60"
             >

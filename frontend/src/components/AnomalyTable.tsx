@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { Anomaly } from "@/api/types";
 import { compareAnomalieId, dash, formatDate, isHighCriticality } from "@/lib/format";
@@ -5,7 +6,8 @@ import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
 import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
-import { ChevronDownIcon } from "./icons";
+import { HistoryModal } from "./HistoryModal";
+import { ChevronDownIcon, HistoryIcon } from "./icons";
 import navLogo from "@/assets/dynamics-nav.png";
 
 export type SortKey =
@@ -84,7 +86,7 @@ const COLUMNS: Column[] = [
 ];
 
 const GRID =
-  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_2.5rem] gap-3 items-center";
+  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_4.9rem] gap-3 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
@@ -118,6 +120,7 @@ export function AnomalyTable({
   onSort,
 }: AnomalyTableProps) {
   const { t } = useI18n();
+  const [historyFor, setHistoryFor] = useState<Anomaly | null>(null);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-lg">
       {/* Header — blood red, bold white, click any column to sort (toggles direction) */}
@@ -186,12 +189,39 @@ export function AnomalyTable({
                     {col.render(a)}
                   </Cell>
                 ))}
-                <NavLinkButton href={a.navOrderLink} />
+                <span className="flex items-center justify-center gap-1.5">
+                  <HistoryButton onOpen={() => setHistoryFor(a)} />
+                  <NavLinkButton href={a.navOrderLink} />
+                </span>
               </div>
             );
           })}
       </div>
+
+      {historyFor && (
+        <HistoryModal anomaly={historyFor} onClose={() => setHistoryFor(null)} />
+      )}
     </div>
+  );
+}
+
+/** Opens the change-history overlay for this row. */
+function HistoryButton({ onOpen }: { onOpen: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+      title={t("table.openHistory")}
+      aria-label={t("table.openHistory")}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-muted
+                 ring-1 ring-line shadow-sm transition hover:scale-105 hover:text-brand-dark hover:ring-brand"
+    >
+      <HistoryIcon className="h-4.5 w-4.5" />
+    </button>
   );
 }
 

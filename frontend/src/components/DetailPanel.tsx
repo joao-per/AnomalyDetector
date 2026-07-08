@@ -600,8 +600,11 @@ function DetailsList({ anomaly }: { anomaly: Anomaly }) {
     [t("common.processRef"), dash(anomaly.processReference)],
     [t("common.order"), dash(anomaly.orderId)],
     [t("common.article"), dash(anomaly.articleName ?? anomaly.articleId)],
+    [t("common.articleId"), dash(anomaly.articleId)],
     [t("common.category"), dash(anomaly.articleCategory)],
+    [t("common.supplierId"), dash(anomaly.supplierId)],
     [t("common.matchClass"), dash(anomaly.matchClass)],
+    [t("common.owner"), dash(anomaly.owner)],
     [t("common.createdAt"), formatDate(anomaly.createdOn)],
   ];
   return (

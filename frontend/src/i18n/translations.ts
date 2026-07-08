@@ -22,6 +22,9 @@ const de = {
   "common.article": "Artikel",
   "common.matchClass": "Match-Klasse",
   "common.processRef": "Prozessbezug",
+  "common.articleId": "Artikel-ID",
+  "common.supplierId": "Lieferanten-ID",
+  "common.owner": "Verantwortlich",
   "common.createdAt": "Erstellt am",
   "common.detected": "Anomalie erkannt",
   "common.email": "E-Mail",
@@ -64,6 +67,12 @@ const de = {
   "table.empty": "Keine Anomalien gefunden.",
   "table.sortBy": "Nach „{label}“ sortieren",
   "table.openNav": "Bestellung in Dynamics NAV öffnen",
+  "table.openHistory": "Änderungshistorie anzeigen",
+
+  // ── Change-history overlay ───────────────────────────────────────
+  "history.title": "Änderungshistorie",
+  "history.empty": "Für diese Anomalie sind noch keine Änderungen protokolliert.",
+  "history.close": "Schließen",
 
   // ── Status badge ─────────────────────────────────────────────────
   "status.new": "Neu",
@@ -155,6 +164,7 @@ const de = {
   "email.notLoadable": "Anomalie nicht ladbar.",
   "email.send": "Senden",
   "email.subjectDefault": "Anomalie {id}",
+  "email.drafting": "KI-Vorschlag wird erstellt…",
   "email.noticeGenerated": "KI-Entwurf übernommen.",
   "email.noticeTemplate": "Vorlagen-Entwurf übernommen (KI-Flow derzeit nicht erreichbar).",
   "email.noticeNoRecipient": "Empfänger-E-Mail fehlt.",
@@ -183,6 +193,9 @@ const en: Record<TranslationKey, string> = {
   "common.article": "Article",
   "common.matchClass": "Match class",
   "common.processRef": "Process reference",
+  "common.articleId": "Article ID",
+  "common.supplierId": "Supplier ID",
+  "common.owner": "Owner",
   "common.createdAt": "Created on",
   "common.detected": "Anomaly detected",
   "common.email": "Email",
@@ -225,6 +238,12 @@ const en: Record<TranslationKey, string> = {
   "table.empty": "No anomalies found.",
   "table.sortBy": "Sort by “{label}”",
   "table.openNav": "Open order in Dynamics NAV",
+  "table.openHistory": "Show change history",
+
+  // ── Change-history overlay ───────────────────────────────────────
+  "history.title": "Change history",
+  "history.empty": "No changes have been logged for this anomaly yet.",
+  "history.close": "Close",
 
   // ── Status badge ─────────────────────────────────────────────────
   "status.new": "New",
@@ -316,6 +335,7 @@ const en: Record<TranslationKey, string> = {
   "email.notLoadable": "Could not load anomaly.",
   "email.send": "Send",
   "email.subjectDefault": "Anomaly {id}",
+  "email.drafting": "Creating AI suggestion…",
   "email.noticeGenerated": "AI draft applied.",
   "email.noticeTemplate": "Template draft applied (AI flow currently unavailable).",
   "email.noticeNoRecipient": "Recipient email is missing.",

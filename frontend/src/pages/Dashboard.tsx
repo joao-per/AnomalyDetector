@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Anomaly } from "@/api/types";
 import { useAnomalies } from "@/api/hooks";
+import { useSessionState } from "@/lib/useSessionState";
 import { ApiError } from "@/api/client";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
@@ -38,15 +39,20 @@ export function Dashboard() {
   const { data, isLoading, isFetching, error, refetch } = useAnomalies();
   const anomalies = useMemo(() => data ?? [], [data]);
 
-  const [card, setCard] = useState<CardKey>("total");
-  const [filters, setFilters] = useState<Record<FilterKey, string>>({
+  // Session-persisted so visiting /untrained (or any route) and coming back
+  // keeps filters, card, sort and selection exactly as the user left them.
+  const [card, setCard] = useSessionState<CardKey>("dash.card", "total");
+  const [filters, setFilters] = useSessionState<Record<FilterKey, string>>("dash.filters", {
     vendorName: "",
     anomalyType: "",
     articleCategory: "",
     criticalityClass: "",
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortState>({ key: "anomalieId", dir: "desc" });
+  const [selectedId, setSelectedId] = useSessionState<string | null>("dash.selected", null);
+  const [sort, setSort] = useSessionState<SortState>("dash.sort", {
+    key: "anomalieId",
+    dir: "desc",
+  });
 
   const filterDefs: FilterDef[] = FILTER_DEFS.map((d) => ({
     key: d.key,

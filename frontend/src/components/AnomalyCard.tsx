@@ -1,7 +1,6 @@
 import type { Anomaly } from "@/api/types";
-import { dash, permille, scoreFraction } from "@/lib/format";
+import { dash } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
-import { ScoreGauge } from "./ScoreGauge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { CriticalityMeter } from "./CriticalityMeter";
 import { DangerTriangleIcon } from "./icons";
@@ -9,11 +8,11 @@ import { DangerTriangleIcon } from "./icons";
 /**
  * Compact red anomaly summary card — the left rail of the email composer
  * (Figma frame 55). Shares the dashboard detail panel's visual language:
- * supplier-logo identity, score ring, and the "criticality on tap" meter.
+ * supplier-logo identity and the "criticality on tap" meter (the score was
+ * dropped on client request 2026-07-07 — not useful for the ops team).
  */
 export function AnomalyCard({ anomaly }: { anomaly: Anomaly | null }) {
   const { t } = useI18n();
-  const frac = scoreFraction(anomaly?.score);
   return (
     <aside className="flex w-60 shrink-0 flex-col gap-4 rounded-2xl bg-gradient-to-b from-brand-dark to-brand-darker px-5 py-6 text-white shadow-xl ring-1 ring-black/10">
       {/* Identity */}
@@ -23,10 +22,6 @@ export function AnomalyCard({ anomaly }: { anomaly: Anomaly | null }) {
           <div className="truncate text-sm font-bold leading-tight">{dash(anomaly?.anomalieId)}</div>
           <div className="truncate text-xs text-white/70">{dash(anomaly?.vendorName)}</div>
         </div>
-      </div>
-
-      <div className="flex justify-center">
-        <ScoreGauge fraction={frac} label={permille(frac)} caption={t("common.score")} size={124} stroke={13} />
       </div>
 
       <div className="flex w-full items-center gap-2 rounded-lg bg-[#ffa3a3] px-2.5 py-1.5 text-brand-dark">
