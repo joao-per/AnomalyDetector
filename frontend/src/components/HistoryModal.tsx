@@ -12,28 +12,44 @@ interface HistoryEntry {
 
 /** at_changehistory is a plain multiline log, newest first. Legacy rows mix
  *  real newlines with literal "\n" sequences and two timestamp formats
- *  (ISO 8601 and dd.MM.yyyy HH:mm) — normalize all of it for display. */
+ *  (ISO 8601 and German dd.MM.yyyy HH:mm). Lines without a timestamp prefix
+ *  are continuations of the previous entry (e.g. a full logged email body),
+ *  not entries of their own. German dates are shown verbatim — Date.parse
+ *  would misread dd.MM as the US MM/dd. */
+const ENTRY_RE = /^(\d{4}-\d{2}-\d{2}T\S+|\d{2}\.\d{2}\.\d{4}(?:,?\s\d{2}:\d{2})?)\s*-\s*(.*)$/;
+
+function formatWhen(tokenRaw: string): string {
+  if (/^\d{4}-\d{2}-\d{2}T/.test(tokenRaw)) {
+    const ms = Date.parse(tokenRaw);
+    if (!Number.isNaN(ms)) {
+      return new Date(ms).toLocaleString("de-AT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  }
+  return tokenRaw;
+}
+
 function parseHistory(raw: string | null): HistoryEntry[] {
   if (!raw) return [];
-  return raw
-    .split(/\r?\n|\\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^(\S+(?:\s\d{2}:\d{2})?)\s+-\s+(.*)$/);
-      if (!m) return { when: null, text: line };
-      const iso = Date.parse(m[1]);
-      const when = Number.isNaN(iso)
-        ? m[1]
-        : new Date(iso).toLocaleString("de-AT", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-      return { when, text: m[2] };
-    });
+  const entries: HistoryEntry[] = [];
+  for (const line of raw.split(/\r?\n|\\n/)) {
+    const text = line.trim();
+    if (!text) continue;
+    const m = text.match(ENTRY_RE);
+    if (m) {
+      entries.push({ when: formatWhen(m[1]), text: m[2] });
+    } else if (entries.length > 0) {
+      entries[entries.length - 1].text += `\n${text}`;
+    } else {
+      entries.push({ when: null, text });
+    }
+  }
+  return entries;
 }
 
 export function HistoryModal({
@@ -105,7 +121,9 @@ export function HistoryModal({
                       {e.when}
                     </div>
                   )}
-                  <p className="mt-0.5 text-sm leading-relaxed text-ink">{e.text}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
+                    {e.text}
+                  </p>
                 </li>
               ))}
             </ol>
