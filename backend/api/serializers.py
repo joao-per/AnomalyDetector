@@ -115,6 +115,7 @@ def anomaly_select() -> list[str]:
         "num_feature1", "num_feature1_value", "num_feature2", "num_feature2_value",
         "num_feature3", "num_feature3_value",
         "plot_standard_url", "plot_enhanced_url", "plot_categorical_url",
+        "test_image_url",
         "owner", "vendor_name", "vendor_email", "vendor_phone", "supplier_id",
         "besteller_email", "besteller",
         "order_id", "nav_order_link", "article_id", "article_category", "article_name",

@@ -56,6 +56,7 @@ ANOMALY = {
     "plot_standard_url": "at_plotdescription",
     "plot_enhanced_url": "at_plot_html_enhanced",
     "plot_categorical_url": "at_cat_plot_url",
+    "test_image_url": "at_testbildurl",     # PNG plot — input for the Erklär-mal flow
     # parties
     "owner": "at_owner",                    # responsible user's email
     "vendor_name": "at_lieferantenname",

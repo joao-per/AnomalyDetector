@@ -68,6 +68,12 @@ const de = {
   "table.sortBy": "Nach „{label}“ sortieren",
   "table.openNav": "Bestellung in Dynamics NAV öffnen",
   "table.openHistory": "Änderungshistorie anzeigen",
+  "table.explain": "Erklär mal",
+
+  // ── "Erklär mal" overlay ─────────────────────────────────────────
+  "explain.title": "Erklär mal",
+  "explain.loading": "Die KI analysiert die Anomalie…",
+  "explain.empty": "Es wurde keine Erklärung zurückgegeben.",
 
   // ── Change-history overlay ───────────────────────────────────────
   "history.title": "Änderungshistorie",
@@ -239,6 +245,12 @@ const en: Record<TranslationKey, string> = {
   "table.sortBy": "Sort by “{label}”",
   "table.openNav": "Open order in Dynamics NAV",
   "table.openHistory": "Show change history",
+  "table.explain": "Erklär mal",
+
+  // ── "Erklär mal" overlay ─────────────────────────────────────────
+  "explain.title": "Erklär mal",
+  "explain.loading": "The AI is analyzing this anomaly…",
+  "explain.empty": "No explanation was returned.",
 
   // ── Change-history overlay ───────────────────────────────────────
   "history.title": "Change history",

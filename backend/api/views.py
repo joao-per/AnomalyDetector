@@ -116,6 +116,11 @@ class AnomalyRetrainView(APIView):
         return Response(svc.retrain_anomaly(guid, user=get_user_email(request)))
 
 
+class AnomalyExplainView(APIView):
+    def post(self, request, guid: str):
+        return Response(svc.explain_anomaly(guid))
+
+
 class AnomalyGenerateEmailView(APIView):
     def post(self, request, guid: str):
         internal = bool((request.data or {}).get("internal", False))

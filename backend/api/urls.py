@@ -17,6 +17,7 @@ urlpatterns = [
     path("anomalies/<str:guid>/untrain/", views.AnomalyUntrainView.as_view()),
     path("anomalies/<str:guid>/cancel/", views.AnomalyCancelView.as_view()),
     path("anomalies/<str:guid>/retrain/", views.AnomalyRetrainView.as_view()),
+    path("anomalies/<str:guid>/explain/", views.AnomalyExplainView.as_view()),
     path("anomalies/<str:guid>/generate-email/", views.AnomalyGenerateEmailView.as_view()),
     path("anomalies/<str:guid>/send-vendor-email/", views.AnomalySendVendorEmailView.as_view()),
     path("anomalies/<str:guid>/send-internal-email/", views.AnomalySendInternalEmailView.as_view()),

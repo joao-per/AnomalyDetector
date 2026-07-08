@@ -26,6 +26,10 @@ export const anomaliesApi = {
 
   retrain: (guid: string) => api.post<Anomaly>(`anomalies/${guid}/retrain/`),
 
+  /** "Erklär mal" — AI explanation of the anomaly's plot image. */
+  explain: (guid: string) =>
+    api.post<{ answer: string | null; raw: unknown }>(`anomalies/${guid}/explain/`),
+
   generateEmail: (guid: string, internal: boolean) =>
     api.post<GenerateEmailResult>(`anomalies/${guid}/generate-email/`, { internal }),
 

@@ -131,6 +131,8 @@ INTERNAL_EMAIL_FLOW_URL = env("INTERNAL_EMAIL_FLOW_URL")
 SET_STATUS_IN_PROGRESS_FLOW_URL = env("SET_STATUS_IN_PROGRESS_FLOW_URL")
 SET_STATUS_CANCELLED_FLOW_URL = env("SET_STATUS_CANCELLED_FLOW_URL")
 SET_STATUS_UNTRAINED_FLOW_URL = env("SET_STATUS_UNTRAINED_FLOW_URL")
+# "Erklär mal": AI explanation of the anomaly's plot image (at_testbildurl).
+EXPLAIN_ANOMALY_FLOW_URL = env("EXPLAIN_ANOMALY_FLOW_URL")
 
 # ── Microsoft Graph (email sending fallback) ─────────────────────────────────
 # Mailbox the BFF sends from when no send-flow URL is configured. Requires the

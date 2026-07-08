@@ -286,6 +286,28 @@ def _change_status(
     return get_anomaly(guid)
 
 
+# ── "Erklär mal" — AI explanation of the anomaly's plot image ────────────────
+def explain_anomaly(guid: str) -> dict:
+    """Calls the Erklär-mal flow with the anomaly's plot image URL
+    (at_testbildurl); the flow answers {"Antwort": "<explanation>"}."""
+    record = _retrieve(guid)
+    a = fm.ANOMALY
+    image_url = record.get(a["test_image_url"])
+    if not image_url:
+        raise ValidationError(
+            "This anomaly has no plot image (at_testbildurl) to explain."
+        )
+    result = run_flow(
+        settings.EXPLAIN_ANOMALY_FLOW_URL,
+        {"url": image_url, "anomalyId": record.get(a["anomalie_id"])},
+        name="ErklaerMal",
+    )
+    answer = None
+    if isinstance(result, dict):
+        answer = result.get("Antwort") or result.get("antwort") or result.get("answer")
+    return {"answer": answer, "raw": result}
+
+
 # ── Email draft generation (Power Automate AI flow, template fallback) ───────
 def generate_email(guid: str, *, internal: bool) -> dict:
     """Draft via the AI flow when it is reachable; otherwise fall back to a

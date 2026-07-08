@@ -7,7 +7,8 @@ import type { TranslationKey } from "@/i18n/translations";
 import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { HistoryModal } from "./HistoryModal";
-import { ChevronDownIcon, HistoryIcon } from "./icons";
+import { ExplainModal } from "./ExplainModal";
+import { ChevronDownIcon, HistoryIcon, SparklesIcon } from "./icons";
 import navLogo from "@/assets/dynamics-nav.png";
 
 export type SortKey =
@@ -86,7 +87,7 @@ const COLUMNS: Column[] = [
 ];
 
 const GRID =
-  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_4.9rem] gap-3 items-center";
+  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_10rem] gap-3 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
@@ -121,6 +122,7 @@ export function AnomalyTable({
 }: AnomalyTableProps) {
   const { t } = useI18n();
   const [historyFor, setHistoryFor] = useState<Anomaly | null>(null);
+  const [explainFor, setExplainFor] = useState<Anomaly | null>(null);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-lg">
       {/* Header — blood red, bold white, click any column to sort (toggles direction) */}
@@ -190,6 +192,7 @@ export function AnomalyTable({
                   </Cell>
                 ))}
                 <span className="flex items-center justify-center gap-1.5">
+                  <ExplainButton onOpen={() => setExplainFor(a)} />
                   <HistoryButton onOpen={() => setHistoryFor(a)} />
                   <NavLinkButton href={a.navOrderLink} />
                 </span>
@@ -201,7 +204,31 @@ export function AnomalyTable({
       {historyFor && (
         <HistoryModal anomaly={historyFor} onClose={() => setHistoryFor(null)} />
       )}
+      {explainFor && (
+        <ExplainModal anomaly={explainFor} onClose={() => setExplainFor(null)} />
+      )}
     </div>
+  );
+}
+
+/** "Erklär mal" — asks the AI to explain this anomaly's plot in an overlay. */
+function ExplainButton({ onOpen }: { onOpen: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+      title={t("table.explain")}
+      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white px-2 text-xs
+                 font-semibold text-brand-dark ring-1 ring-line shadow-sm transition
+                 hover:scale-105 hover:ring-brand"
+    >
+      <SparklesIcon className="h-3.5 w-3.5 text-brand" />
+      {t("table.explain")}
+    </button>
   );
 }
 
