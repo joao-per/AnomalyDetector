@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Anomaly } from "@/api/types";
+import { STATUS } from "@/api/types";
 import { useAnomalies } from "@/api/hooks";
 import { useSessionState } from "@/lib/useSessionState";
 import { ApiError } from "@/api/client";
@@ -14,7 +15,7 @@ import {
   type SortState,
 } from "@/components/AnomalyTable";
 import { DetailPanel } from "@/components/DetailPanel";
-import { StatCards, matchesCard, type CardKey } from "@/components/StatCards";
+import { StatCards, matchesCard, CARD_KEYS, type CardKey } from "@/components/StatCards";
 
 type FilterKey = "vendorName" | "anomalyType" | "articleCategory" | "criticalityClass";
 
@@ -38,10 +39,15 @@ export function Dashboard() {
   const { t } = useI18n();
   const { data, isLoading, isFetching, error, refetch } = useAnomalies();
   const anomalies = useMemo(() => data ?? [], [data]);
+  // The default list excludes cancelled server-side — that card needs its own query.
+  const cancelledQ = useAnomalies(STATUS.CANCELLED);
+  const cancelledAnomalies = useMemo(() => cancelledQ.data ?? [], [cancelledQ.data]);
 
   // Session-persisted so visiting /untrained (or any route) and coming back
   // keeps filters, card, sort and selection exactly as the user left them.
-  const [card, setCard] = useSessionState<CardKey>("dash.card", "total");
+  const [storedCard, setCard] = useSessionState<CardKey>("dash.card", "total");
+  // Older sessions may have persisted the removed "resolved" key.
+  const card = CARD_KEYS.includes(storedCard) ? storedCard : "total";
   const [filters, setFilters] = useSessionState<Record<FilterKey, string>>("dash.filters", {
     vendorName: "",
     anomalyType: "",
@@ -61,8 +67,11 @@ export function Dashboard() {
     options: uniqueValues(anomalies, d.key),
   }));
 
+  // The cancelled card switches the table's data source — those rows are not
+  // part of the default (open) list.
+  const baseRows = card === "cancelled" ? cancelledAnomalies : anomalies;
   const visible = useMemo(() => {
-    return anomalies
+    return baseRows
       .filter((a) => {
         if (!matchesCard(a, card)) return false;
         for (const d of FILTER_DEFS) {
@@ -72,7 +81,7 @@ export function Dashboard() {
         return true;
       })
       .sort((a, b) => compareAnomalies(a, b, sort));
-  }, [anomalies, card, filters, sort]);
+  }, [baseRows, card, filters, sort]);
 
   const selected = useMemo(
     () => visible.find((a) => a.id === selectedId) ?? null,
@@ -103,7 +112,12 @@ export function Dashboard() {
   return (
     <PageShell>
       <main className="flex min-h-0 flex-1 gap-6 px-8 pb-8 pt-4">
-        <StatCards anomalies={anomalies} active={card} onSelect={setCard} />
+        <StatCards
+          anomalies={anomalies}
+          cancelledAnomalies={cancelledAnomalies}
+          active={card}
+          onSelect={setCard}
+        />
 
         <section className="flex min-h-0 flex-1 flex-col gap-5">
           <FilterBar
@@ -117,7 +131,7 @@ export function Dashboard() {
             anomalies={visible}
             selectedId={selectedId}
             onSelect={(a) => setSelectedId(a.id)}
-            loading={isLoading}
+            loading={card === "cancelled" ? cancelledQ.isLoading : isLoading}
             error={errMessage}
             sort={sort}
             onSort={onSort}

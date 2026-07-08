@@ -123,7 +123,7 @@ const de = {
   "card.totalTitle": "Anomalien gesamt",
   "card.criticalTitle": "Kritisch",
   "card.progressTitle": "In Bearbeitung",
-  "card.resolvedTitle": "Erledigt",
+  "card.cancelledTitle": "Abgebrochen",
   "card.ofTotal": "{pct}% gesamt",
   "card.suppliersAffected": "{n} Lieferanten",
 
@@ -300,7 +300,7 @@ const en: Record<TranslationKey, string> = {
   "card.totalTitle": "Total Anomalies",
   "card.criticalTitle": "Critical",
   "card.progressTitle": "In Progress",
-  "card.resolvedTitle": "Resolved",
+  "card.cancelledTitle": "Cancelled",
   "card.ofTotal": "{pct}% of total",
   "card.suppliersAffected": "{n} suppliers",
 

@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import type { Anomaly } from "@/api/types";
-import { isHighCriticality, isTerminal, statusTone } from "@/lib/format";
+import { isHighCriticality, statusTone } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
-import { CheckCircleIcon, DangerTriangleIcon, ProgressIcon } from "./icons";
+import { DangerTriangleIcon, ProgressIcon, XCircleIcon } from "./icons";
 
-export type CardKey = "total" | "critical" | "progress" | "resolved";
+export type CardKey = "total" | "critical" | "progress" | "cancelled";
+
+export const CARD_KEYS: readonly CardKey[] = ["total", "critical", "progress", "cancelled"];
 
 /** Does an anomaly belong to a given stat card? (drives the count + the filter) */
 export function matchesCard(a: Anomaly, key: CardKey): boolean {
@@ -14,8 +16,8 @@ export function matchesCard(a: Anomaly, key: CardKey): boolean {
       return isHighCriticality(a.criticalityClass);
     case "progress":
       return statusTone(a.status) === "progress";
-    case "resolved":
-      return isTerminal(a.status); // done, cancelled or untrained
+    case "cancelled":
+      return statusTone(a.status) === "cancelled";
     default:
       return true;
   }
@@ -75,16 +77,16 @@ const VARIANTS: Record<CardKey, Variant> = {
     idle: "ring-1 ring-black/5",
     values: [0.24, 0.34, 0.46, 0.6, 0.74, 0.58, 0.5, 0.62, 0.54],
   },
-  resolved: {
+  cancelled: {
     card: "bg-white text-ink",
-    title: "text-emerald-600",
+    title: "text-rose-600",
     number: "text-ink",
     sub: "text-muted",
-    iconWrap: "bg-emerald-100 text-emerald-600",
-    icon: <CheckCircleIcon className="h-4 w-4" />,
-    spark: "#10b981",
+    iconWrap: "bg-rose-100 text-rose-600",
+    icon: <XCircleIcon className="h-4 w-4" />,
+    spark: "#f43f5e",
     light: false,
-    ring: "ring-2 ring-emerald-500",
+    ring: "ring-2 ring-rose-500",
     idle: "ring-1 ring-black/5",
     values: [0.2, 0.28, 0.34, 0.3, 0.46, 0.56, 0.62, 0.74, 0.82],
   },
@@ -92,17 +94,25 @@ const VARIANTS: Record<CardKey, Variant> = {
 
 interface StatCardsProps {
   anomalies: Anomaly[];
+  /** Cancelled anomalies come from their own query — the default list
+   *  excludes them server-side. */
+  cancelledAnomalies: Anomaly[];
   active: CardKey;
   onSelect: (key: CardKey) => void;
 }
 
-export function StatCards({ anomalies, active, onSelect }: StatCardsProps) {
+export function StatCards({
+  anomalies,
+  cancelledAnomalies,
+  active,
+  onSelect,
+}: StatCardsProps) {
   const { t } = useI18n();
 
   const total = anomalies.length;
   const critical = anomalies.filter((a) => matchesCard(a, "critical")).length;
   const progress = anomalies.filter((a) => matchesCard(a, "progress")).length;
-  const resolved = anomalies.filter((a) => matchesCard(a, "resolved")).length;
+  const cancelled = cancelledAnomalies.length;
   const suppliers = new Set(
     anomalies.map((a) => (a.vendorName ?? "").trim()).filter(Boolean),
   ).size;
@@ -129,10 +139,17 @@ export function StatCards({ anomalies, active, onSelect }: StatCardsProps) {
       sub: t("card.ofTotal", { pct: pct(progress) }),
     },
     {
-      key: "resolved",
-      titleKey: "card.resolvedTitle",
-      count: resolved,
-      sub: t("card.ofTotal", { pct: pct(resolved) }),
+      key: "cancelled",
+      titleKey: "card.cancelledTitle",
+      count: cancelled,
+      // share of everything incl. the cancelled ones themselves — they are
+      // not part of the (open) default list the other cards are based on
+      sub: t("card.ofTotal", {
+        pct:
+          total + cancelled > 0
+            ? ((cancelled / (total + cancelled)) * 100).toFixed(1)
+            : "0",
+      }),
     },
   ];
 
