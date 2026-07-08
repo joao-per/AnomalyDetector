@@ -113,7 +113,7 @@ class AnomalyCancelView(APIView):
 
 class AnomalyRetrainView(APIView):
     def post(self, request, guid: str):
-        return Response(svc.retrain_anomaly(guid))
+        return Response(svc.retrain_anomaly(guid, user=get_user_email(request)))
 
 
 class AnomalyGenerateEmailView(APIView):

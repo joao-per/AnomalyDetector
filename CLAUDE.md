@@ -108,9 +108,10 @@ with status `Abtrainiert`, grouped by creation date, with a Retrain action),
 - **Status-change flows are optional**: if `SET_STATUS_*_FLOW_URL` is blank, the backend writes
   the transition directly to Dataverse (default). If a flow URL is set, the flow is assumed to
   handle its own side-effects (including the untrain feedback insert).
-- **The default anomaly list hides `Abtrainiert` and `abgebrochen`** (server-side OData filter
-  in `list_anomalies`); an explicit `?status=` query still returns them (the `/untrained` page
-  relies on this). Independently, `HIDDEN_ARTICLE_CATEGORIES` (default `PFANDART`) is excluded
+- **The default anomaly list hides `Abtrainiert`, `abgebrochen` and `Abgeschlossen`**
+  (server-side OData filter in `list_anomalies`); an explicit `?status=` query still returns
+  them (the `/untrained` page relies on this). All direct-path status transitions (incl.
+  retrain) PREPEND an entry to `at_changehistory` (newest first, canvas-app format). Independently, `HIDDEN_ARTICLE_CATEGORIES` (default `PFANDART`) is excluded
   from EVERY list, status filter or not. The details panel's "Was ist passiert" shows `at_anomalydescription1` only —
   `at_matchexplanation` is deliberately not surfaced (too technical for the ops team).
 - **Secrets live only in `.env` files** (gitignored). `DATAVERSE_CLIENT_SECRET` and the flow

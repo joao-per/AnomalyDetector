@@ -76,6 +76,7 @@ def map_anomaly(record: dict) -> dict:
             "categorical": g(a["plot_categorical_url"]),
         },
         # parties
+        "owner": g(a["owner"]),
         "vendorName": g(a["vendor_name"]),
         "vendorEmail": g(a["vendor_email"]),
         "vendorPhone": g(a["vendor_phone"]),
@@ -91,9 +92,10 @@ def map_anomaly(record: dict) -> dict:
         # email drafts
         "draftVendorEmail": g(a["draft_vendor"]),
         "draftInternalEmail": g(a["draft_internal"]),
-        # comments
+        # comments / audit trail
         "commentDone": g(a["comment_done"]),
         "commentAcceptance": g(a["comment_acceptance"]),
+        "changeHistory": g(a["change_history"]),
         # system
         "createdOn": g(a["created_on"]),
         "modifiedOn": g(a["modified_on"]),
@@ -113,11 +115,11 @@ def anomaly_select() -> list[str]:
         "num_feature1", "num_feature1_value", "num_feature2", "num_feature2_value",
         "num_feature3", "num_feature3_value",
         "plot_standard_url", "plot_enhanced_url", "plot_categorical_url",
-        "vendor_name", "vendor_email", "vendor_phone", "supplier_id",
+        "owner", "vendor_name", "vendor_email", "vendor_phone", "supplier_id",
         "besteller_email", "besteller",
         "order_id", "nav_order_link", "article_id", "article_category", "article_name",
         "draft_vendor", "draft_internal",
-        "comment_done", "comment_acceptance",
+        "comment_done", "comment_acceptance", "change_history",
         "created_on", "modified_on",
     ]
     return [a[k] for k in keys]

@@ -48,12 +48,13 @@ def list_anomalies(*, status: str | None = None, top: int = 200) -> list[dict]:
     if status:
         parts.append(f"{a['status']} eq '{_esc(status)}'")
     else:
-        # Default view: hide untrained/cancelled records. They stay reachable
-        # via an explicit ?status= filter (e.g. the /untrained page).
+        # Default view: hide untrained/cancelled/completed records. They stay
+        # reachable via an explicit ?status= filter (e.g. the /untrained page).
         s = a["status"]
         parts.append(
             f"({s} eq null or ({s} ne '{fm.STATUS_UNTRAINED}' "
-            f"and {s} ne '{fm.STATUS_CANCELLED}'))"
+            f"and {s} ne '{fm.STATUS_CANCELLED}' "
+            f"and {s} ne '{fm.STATUS_DONE}'))"
         )
     # Hidden article categories (e.g. PFANDART) are excluded from EVERY list,
     # regardless of the status filter.
@@ -140,14 +141,26 @@ def cancel_anomaly(guid: str, *, comment: str, user: str) -> dict:
     )
 
 
-def retrain_anomaly(guid: str) -> dict:
+def retrain_anomaly(guid: str, *, user: str) -> dict:
     """'Retrain' → status back to 'new', and the training feedback is withdrawn
     (matching `at_abtrainierteanomaliens` rows are deleted) so the ML pipeline
     starts flagging this pattern again."""
     a = fm.ANOMALY
     record = _retrieve(guid)
     _remove_training_feedback(record.get(a["anomalie_id"]))
-    dataverse.update(fm.ANOMALY_ENTITY_SET, guid, {a["status"]: fm.STATUS_NEW})
+    dataverse.update(
+        fm.ANOMALY_ENTITY_SET,
+        guid,
+        {
+            a["status"]: fm.STATUS_NEW,
+            a["change_history"]: _appended_history(
+                record,
+                new_status=fm.STATUS_NEW,
+                user=user,
+                comment="Neu trainiert (Training-Feedback zurückgezogen)",
+            ),
+        },
+    )
     return get_anomaly(guid)
 
 
@@ -204,6 +217,18 @@ def _remove_training_feedback(anomalie_id: str | None) -> None:
         dataverse.delete(fm.UNTRAINED_ENTITY_SET, row[u["guid"]])
 
 
+def _appended_history(record: dict, *, new_status: str, user: str, comment: str) -> str:
+    """The anomaly's change history with a new entry PREPENDED (newest first —
+    the convention the canvas app used, matching entries like
+    '20.04.2026 09:55 - Status geändert zu ... von ... | Mit dem Kommentar: ...')."""
+    ts = datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M")
+    entry = f"{ts} - Status geändert zu {new_status} von {user}"
+    if comment and comment.strip():
+        entry += f" | Mit dem Kommentar: {comment.strip()}"
+    existing = (record.get(fm.ANOMALY["change_history"]) or "").strip()
+    return f"{entry}\n{existing}" if existing else entry
+
+
 def _change_status(
     guid: str,
     *,
@@ -249,6 +274,9 @@ def _change_status(
                 a["status"]: new_status,
                 fm.COMMENT_FIELD: comment,
                 a["status_change_ts"]: _now_iso(),
+                a["change_history"]: _appended_history(
+                    record, new_status=new_status, user=user, comment=comment
+                ),
             },
         )
         # Extra side-effects the original flow performed (e.g. the untrain

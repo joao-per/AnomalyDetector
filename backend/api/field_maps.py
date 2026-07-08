@@ -57,6 +57,7 @@ ANOMALY = {
     "plot_enhanced_url": "at_plot_html_enhanced",
     "plot_categorical_url": "at_cat_plot_url",
     # parties
+    "owner": "at_owner",                    # responsible user's email
     "vendor_name": "at_lieferantenname",
     "vendor_email": "at_lieferantenemail",
     "vendor_phone": "at_lieferantentelefonnummer",
