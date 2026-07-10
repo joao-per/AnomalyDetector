@@ -46,6 +46,14 @@ function detectionDate(a: Anomaly): string | null {
   return a.detectedAt ?? a.createdOn;
 }
 
+/** Order number for the table + filter: prefer the dedicated BE-order column
+ *  (cr062_order_number), but that stays NULL until the backend team ships the
+ *  SQL source — meanwhile at_orderid holds the document number (BE/WE/ER…)
+ *  that the details panel shows as "Bestellung". */
+export function orderNumberOf(a: Anomaly): string | null {
+  return a.orderNumber ?? a.orderId;
+}
+
 const COLUMNS: Column[] = [
   {
     key: "anomalieId",
@@ -89,8 +97,8 @@ const COLUMNS: Column[] = [
     key: "orderNumber",
     labelKey: "common.orderNo",
     kind: "str",
-    render: (a) => dash(a.orderNumber),
-    sortValue: (a) => a.orderNumber ?? "",
+    render: (a) => dash(orderNumberOf(a)),
+    sortValue: (a) => orderNumberOf(a) ?? "",
     cellClass: () => "tabular-nums",
   },
   {

@@ -11,6 +11,7 @@ import { FilterBar, type FilterDef } from "@/components/FilterBar";
 import {
   AnomalyTable,
   compareAnomalies,
+  orderNumberOf,
   SORT_KEYS,
   type SortKey,
   type SortState,
@@ -119,7 +120,10 @@ export function Dashboard() {
         for (const d of FILTER_DEFS) {
           const want = (filters[d.key] ?? "").trim();
           if (!want) continue;
-          const have = (a[d.key] ?? "").toString().trim();
+          // The order-number filter searches what the column shows (incl.
+          // the at_orderid fallback), not just the raw field.
+          const raw = d.key === "orderNumber" ? orderNumberOf(a) : a[d.key];
+          const have = (raw ?? "").toString().trim();
           if (d.type === "text") {
             // Substring search (order numbers are often pasted partially).
             if (!have.toLowerCase().includes(want.toLowerCase())) return false;

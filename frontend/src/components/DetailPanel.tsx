@@ -610,10 +610,16 @@ function orderTypeLabel(transactionType: string | null): string | null {
 function DetailsList({ anomaly }: { anomaly: Anomaly }) {
   const { t } = useI18n();
   const orderType = orderTypeLabel(anomaly.transactionType);
+  // The dedicated BE-order column gets its own row only once it carries a
+  // value that differs from the document number already shown as "Bestellung".
+  const showOrderNumber =
+    !!anomaly.orderNumber && anomaly.orderNumber !== anomaly.orderId;
   const rows: Array<[string, string]> = [
     [t("common.processRef"), dash(anomaly.processReference)],
     [t("common.order"), dash(anomaly.orderId)],
-    [t("common.orderNumber"), dash(anomaly.orderNumber)],
+    ...(showOrderNumber
+      ? [[t("common.orderNumber"), dash(anomaly.orderNumber)] as [string, string]]
+      : []),
     ...(orderType ? [[t("common.orderType"), orderType] as [string, string]] : []),
     [t("common.article"), dash(anomaly.articleName ?? anomaly.articleId)],
     [t("common.articleId"), dash(anomaly.articleId)],
