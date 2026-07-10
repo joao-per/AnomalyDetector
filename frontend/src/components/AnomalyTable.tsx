@@ -187,14 +187,18 @@ export function AnomalyTable({
               type="button"
               onClick={() => onSort(col.key)}
               title={t("table.sortBy", { label })}
-              className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-1 text-center text-sm font-bold text-white transition hover:text-white/80"
+              className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-1 text-center text-[13px] font-bold text-white transition hover:text-white/80"
             >
               <span className="truncate">{label}</span>
-              <ChevronDownIcon
-                className={`h-3.5 w-3.5 shrink-0 transition ${
-                  active ? "opacity-100" : "opacity-30"
-                } ${active && sort.dir === "asc" ? "rotate-180" : ""}`}
-              />
+              {/* chevron only on the active column — with 9 data columns the
+                  idle chevrons were eating the label space */}
+              {active && (
+                <ChevronDownIcon
+                  className={`h-3.5 w-3.5 shrink-0 transition ${
+                    sort.dir === "asc" ? "rotate-180" : ""
+                  }`}
+                />
+              )}
             </button>
           );
         })}
