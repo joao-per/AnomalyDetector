@@ -91,3 +91,24 @@ export function useRetrainAnomaly() {
     },
   });
 }
+
+/** Permanently deletes the given anomalies one by one. Resolves with the ids
+ *  that failed (empty array = all gone). Always refreshes the lists — a
+ *  partial failure still removed some rows. */
+export function useDeleteAnomalies() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (guids: string[]) => {
+      const failed: string[] = [];
+      for (const guid of guids) {
+        try {
+          await anomaliesApi.remove(guid);
+        } catch {
+          failed.push(guid);
+        }
+      }
+      return failed;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["anomalies"] }),
+  });
+}

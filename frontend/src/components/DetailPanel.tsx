@@ -348,12 +348,12 @@ function ActionMenu({
 
   const actions: ActionDef[] = isNew
     ? [
+        // Client rule 2026-07-10: only "Abtrainieren" requires a comment.
         {
           id: "progress",
           labelKey: "detail.actionInProgress",
           icon: <ProgressIcon className="h-4 w-4" />,
           chip: "bg-amber-50 text-amber-600",
-          needsComment: true,
           run: onProgress,
         },
         {
@@ -365,11 +365,11 @@ function ActionMenu({
           run: onUntrain,
         },
         {
+          // "Erledigt" (formerly "Abbrechen") — still sets status 'abgebrochen'
           id: "cancel",
           labelKey: "detail.actionCancel",
           icon: <XCircleIcon className="h-4 w-4" />,
           chip: "bg-rose-50 text-rose-600",
-          needsComment: true,
           run: onCancel,
         },
         {
@@ -594,18 +594,35 @@ function Panel({ children }: { children: ReactNode }) {
   );
 }
 
+/** NAV order type from cr062_transaction_type — anything else stays hidden.
+ *  (Domain terms; not translated.) */
+function orderTypeLabel(transactionType: string | null): string | null {
+  switch ((transactionType ?? "").trim()) {
+    case "11":
+      return "Materialbestellung";
+    case "1":
+      return "Sachkontobestellung";
+    default:
+      return null;
+  }
+}
+
 function DetailsList({ anomaly }: { anomaly: Anomaly }) {
   const { t } = useI18n();
+  const orderType = orderTypeLabel(anomaly.transactionType);
   const rows: Array<[string, string]> = [
     [t("common.processRef"), dash(anomaly.processReference)],
     [t("common.order"), dash(anomaly.orderId)],
+    [t("common.orderNumber"), dash(anomaly.orderNumber)],
+    ...(orderType ? [[t("common.orderType"), orderType] as [string, string]] : []),
     [t("common.article"), dash(anomaly.articleName ?? anomaly.articleId)],
     [t("common.articleId"), dash(anomaly.articleId)],
     [t("common.category"), dash(anomaly.articleCategory)],
     [t("common.supplierId"), dash(anomaly.supplierId)],
     [t("common.matchClass"), dash(anomaly.matchClass)],
     [t("common.owner"), dash(anomaly.owner)],
-    [t("common.createdAt"), formatDate(anomaly.createdOn)],
+    // Detection time (SQL created_at) — createdOn is only the sync time.
+    [t("common.createdAt"), formatDate(anomaly.detectedAt ?? anomaly.createdOn)],
   ];
   return (
     // Spec-sheet grid: 2 columns of label-over-value cells with hairlines

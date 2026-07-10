@@ -67,6 +67,8 @@ ANOMALY = {
     "besteller": "cr062_besteller",
     # order / article
     "order_id": "at_orderid",
+    "order_number": "cr062_order_number",  # BE… purchase order (dbo.anomalies.order_number)
+    "transaction_type": "cr062_transaction_type",  # "11" Material- / "1" Sachkontobestellung
     "nav_order_link": "at_navorderlink",
     "article_id": "at_artikelid",
     "article_category": "at_artikelkategorie",
@@ -79,6 +81,9 @@ ANOMALY = {
     "comment_acceptance": "at_kommentarakzeptanzmultiline",
     "change_history": "at_changehistory",
     # system
+    # Detection timestamp (dbo.anomalies.created_at). Dataverse's own createdon
+    # is only the sync/import time — never show it as the "creation date".
+    "detected_at": "cr062_created_at",
     "created_on": "createdon",
     "modified_on": "modifiedon",
 }

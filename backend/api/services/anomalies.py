@@ -69,7 +69,9 @@ def list_anomalies(*, status: str | None = None, top: int = 200) -> list[dict]:
         fm.ANOMALY_ENTITY_SET,
         select=serializers.anomaly_select(),
         filter=flt,
-        orderby=f"{a['created_on']} desc",
+        # Detection time, not createdon: Dataverse's createdon is only the
+        # sync/import time (a re-sync makes months-old anomalies look new).
+        orderby=f"{a['detected_at']} desc",
         top=top,
     )
     return [serializers.map_anomaly(r) for r in records]
@@ -91,13 +93,15 @@ def _retrieve(guid: str) -> dict:
 
 # ── Status transitions (mirror Close / Untrain / Retrain) ────────────────────
 def close_anomaly(guid: str, *, comment: str, user: str) -> dict:
-    """'Close' → status 'in Bearbeitung'. Only allowed from 'new'; comment required."""
+    """'Bearbeitung' → status 'in Bearbeitung'. Only allowed from 'new';
+    comment optional (client rule 2026-07-10: only untrain requires one)."""
     return _change_status(
         guid,
         new_status=fm.STATUS_IN_PROGRESS,
         comment=comment,
         user=user,
         require_status=fm.STATUS_NEW,
+        require_comment=False,
         flow_url=settings.SET_STATUS_IN_PROGRESS_FLOW_URL,
         flow_name="SetStatusInBearbeitung",
     )
@@ -127,15 +131,16 @@ def untrain_anomaly(guid: str, *, comment: str, user: str) -> dict:
 
 
 def cancel_anomaly(guid: str, *, comment: str, user: str) -> dict:
-    """'Cancel' → status 'abgebrochen'. Only allowed from 'new'; comment
-    required. Plain terminal state — unlike untrain, the ML pipeline keeps
-    flagging this pattern."""
+    """'Erledigt' (UI label; formerly 'Abbrechen') → status 'abgebrochen'.
+    Only allowed from 'new'; comment optional. Plain terminal state — unlike
+    untrain, the ML pipeline keeps flagging this pattern."""
     return _change_status(
         guid,
         new_status=fm.STATUS_CANCELLED,
         comment=comment,
         user=user,
         require_status=fm.STATUS_NEW,
+        require_comment=False,
         flow_url=settings.SET_STATUS_CANCELLED_FLOW_URL,
         flow_name="SetStatusAbgebrochen",
     )
@@ -162,6 +167,17 @@ def retrain_anomaly(guid: str, *, user: str) -> dict:
         },
     )
     return get_anomaly(guid)
+
+
+def delete_anomaly(guid: str) -> None:
+    """PERMANENTLY delete an anomaly record from Dataverse (standard Delete).
+
+    Used by the ops team to clean up records — including orphans whose source
+    row no longer exists in dbo.anomalies (SQL deletions never propagate).
+    The frontend shows an explicit "this is permanent" confirmation first.
+    """
+    _retrieve(guid)  # clean 404 instead of a Dataverse error for unknown ids
+    dataverse.delete(fm.ANOMALY_ENTITY_SET, guid)
 
 
 # The anomaly stores the process as a German label, but the feedback table (and
@@ -238,9 +254,10 @@ def _change_status(
     require_status: str,
     flow_url: str,
     flow_name: str,
+    require_comment: bool = True,
     on_direct=None,
 ) -> dict:
-    if not comment or not comment.strip():
+    if require_comment and (not comment or not comment.strip()):
         raise ValidationError({"comment": "A comment is required for this action."})
 
     record = _retrieve(guid)
@@ -267,18 +284,17 @@ def _change_status(
         )
     else:
         # Phase-1 default: write the transition straight to Dataverse.
-        dataverse.update(
-            fm.ANOMALY_ENTITY_SET,
-            guid,
-            {
-                a["status"]: new_status,
-                fm.COMMENT_FIELD: comment,
-                a["status_change_ts"]: _now_iso(),
-                a["change_history"]: _appended_history(
-                    record, new_status=new_status, user=user, comment=comment
-                ),
-            },
-        )
+        patch = {
+            a["status"]: new_status,
+            a["status_change_ts"]: _now_iso(),
+            a["change_history"]: _appended_history(
+                record, new_status=new_status, user=user, comment=comment
+            ),
+        }
+        if comment and comment.strip():
+            # Optional-comment actions must not blank an existing comment.
+            patch[fm.COMMENT_FIELD] = comment
+        dataverse.update(fm.ANOMALY_ENTITY_SET, guid, patch)
         # Extra side-effects the original flow performed (e.g. the untrain
         # training-feedback insert) — only needed on the direct path.
         if on_direct:

@@ -86,6 +86,11 @@ class AnomalyDetailView(APIView):
     def get(self, request, guid: str):
         return Response(svc.get_anomaly(guid))
 
+    def delete(self, request, guid: str):
+        """Permanently removes the record from Dataverse (no soft-delete)."""
+        svc.delete_anomaly(guid)
+        return Response(status=204)
+
 
 class AnomalyCloseView(APIView):
     def post(self, request, guid: str):

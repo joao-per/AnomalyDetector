@@ -11,20 +11,52 @@ import { FilterBar, type FilterDef } from "@/components/FilterBar";
 import {
   AnomalyTable,
   compareAnomalies,
+  SORT_KEYS,
   type SortKey,
   type SortState,
 } from "@/components/AnomalyTable";
 import { DetailPanel } from "@/components/DetailPanel";
 import { StatCards, matchesCard, CARD_KEYS, type CardKey } from "@/components/StatCards";
 
-type FilterKey = "vendorName" | "anomalyType" | "articleCategory" | "criticalityClass";
+type FilterKey =
+  | "vendorName"
+  | "anomalyType"
+  | "articleCategory"
+  | "criticalityClass"
+  | "owner"
+  | "processReference"
+  | "orderNumber";
 
-const FILTER_DEFS: { key: FilterKey; labelKey: TranslationKey }[] = [
+const FILTER_DEFS: { key: FilterKey; labelKey: TranslationKey; type?: "text" }[] = [
   { key: "vendorName", labelKey: "common.vendor" },
   { key: "anomalyType", labelKey: "common.type" },
   { key: "articleCategory", labelKey: "common.category" },
   { key: "criticalityClass", labelKey: "common.criticality" },
+  { key: "owner", labelKey: "common.owner" },
+  { key: "processReference", labelKey: "common.processRef" },
+  { key: "orderNumber", labelKey: "common.orderNumber", type: "text" },
 ];
+
+const EMPTY_FILTERS: Record<FilterKey, string> = {
+  vendorName: "",
+  anomalyType: "",
+  articleCategory: "",
+  criticalityClass: "",
+  owner: "",
+  processReference: "",
+  orderNumber: "",
+};
+
+// Friendlier labels for the raw Prozessbezug values stored in Dataverse
+// (labels per ticket 2026-07-10, pending product-owner confirmation).
+const PROCESS_REF_LABELS: Record<string, string> = {
+  Bestellkopf: "Bestellung (Kopf)",
+  Bestellposition: "Bestellung (Position)",
+  Wareneingang: "Wareneingang",
+  Rechnung: "Rechnung",
+};
+
+const DEFAULT_SORT: SortState = { key: "detectedAt", dir: "desc" };
 
 function uniqueValues(rows: Anomaly[], key: FilterKey): string[] {
   const set = new Set<string>();
@@ -48,23 +80,33 @@ export function Dashboard() {
   const [storedCard, setCard] = useSessionState<CardKey>("dash.card", "total");
   // Older sessions may have persisted the removed "resolved" key.
   const card = CARD_KEYS.includes(storedCard) ? storedCard : "total";
-  const [filters, setFilters] = useSessionState<Record<FilterKey, string>>("dash.filters", {
-    vendorName: "",
-    anomalyType: "",
-    articleCategory: "",
-    criticalityClass: "",
-  });
+  const [storedFilters, setFilters] = useSessionState<Record<FilterKey, string>>(
+    "dash.filters",
+    EMPTY_FILTERS,
+  );
+  // Older sessions may lack the newer filter keys — keep inputs controlled.
+  const filters = useMemo(
+    () => ({ ...EMPTY_FILTERS, ...storedFilters }),
+    [storedFilters],
+  );
   const [selectedId, setSelectedId] = useSessionState<string | null>("dash.selected", null);
-  const [sort, setSort] = useSessionState<SortState>("dash.sort", {
-    key: "anomalieId",
-    dir: "desc",
-  });
+  const [storedSort, setSort] = useSessionState<SortState>("dash.sort", DEFAULT_SORT);
+  // Older sessions may have persisted a removed sort key (e.g. "createdOn").
+  const sort = SORT_KEYS.includes(storedSort.key) ? storedSort : DEFAULT_SORT;
 
   const filterDefs: FilterDef[] = FILTER_DEFS.map((d) => ({
     key: d.key,
     label: t(d.labelKey),
     value: filters[d.key],
-    options: uniqueValues(anomalies, d.key),
+    type: d.type,
+    options:
+      d.type === "text"
+        ? undefined
+        : uniqueValues(anomalies, d.key).map((v) => ({
+            value: v,
+            label:
+              d.key === "processReference" ? PROCESS_REF_LABELS[v] ?? v : v,
+          })),
   }));
 
   // The cancelled card switches the table's data source — those rows are not
@@ -75,8 +117,15 @@ export function Dashboard() {
       .filter((a) => {
         if (!matchesCard(a, card)) return false;
         for (const d of FILTER_DEFS) {
-          const want = filters[d.key];
-          if (want && (a[d.key] ?? "").toString().trim() !== want) return false;
+          const want = (filters[d.key] ?? "").trim();
+          if (!want) continue;
+          const have = (a[d.key] ?? "").toString().trim();
+          if (d.type === "text") {
+            // Substring search (order numbers are often pasted partially).
+            if (!have.toLowerCase().includes(want.toLowerCase())) return false;
+          } else if (have !== want) {
+            return false;
+          }
         }
         return true;
       })
@@ -89,10 +138,10 @@ export function Dashboard() {
   );
 
   function onFilterChange(key: string, value: string) {
-    setFilters((prev) => ({ ...prev, [key as FilterKey]: value }));
+    setFilters((prev) => ({ ...EMPTY_FILTERS, ...prev, [key as FilterKey]: value }));
   }
   function onClear() {
-    setFilters({ vendorName: "", anomalyType: "", articleCategory: "", criticalityClass: "" });
+    setFilters(EMPTY_FILTERS);
     setCard("total");
   }
   function onSort(key: SortKey) {

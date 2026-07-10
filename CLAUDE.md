@@ -45,8 +45,11 @@ Request flow: `api/urls.py` → thin `APIView`s in `api/views.py` → all logic 
 - **`api/services/flows.py`** — calls existing Power Automate HTTP-trigger flows via `run_flow`.
   A missing flow URL raises `FlowError(503)` so the feature degrades instead of crashing.
 - **`api/services/anomalies.py`** — the business logic; the server-side equivalent of the
-  canvas app's Power Fx actions. Enforces status-transition guards (e.g. Close/Untrain only
-  allowed from status `new`, comment required) on the server.
+  canvas app's Power Fx actions. Enforces status-transition guards on the server: transitions
+  only from status `new`; a comment is mandatory ONLY for Untrain ("Abtrainieren") — the
+  "Bearbeitung" (in progress) and "Erledigt" (cancel) actions take it optionally. Also hosts
+  the permanent Dataverse delete (`DELETE /api/anomalies/<guid>/`), used to clean up orphans
+  whose SQL source row is gone.
 - **`api/field_maps.py`** — the **single source of truth** for the Dataverse schema. Maps clean
   names → publisher-prefixed logical column names (`at_…`, some `cr062_…`) and entity-set names.
   If the Dataverse schema changes, edit only this file. Note: the anomaly primary-key column is
@@ -99,6 +102,17 @@ with status `Abtrainiert`, grouped by creation date, with a Retrain action),
 - **Email sending picks the first configured path**: send-flow URL → Microsoft Graph
   (`GRAPH_SENDER_UPN`) → clean 503. `EMAIL_ACTIONS_ENABLED=false` is a kill switch that turns
   the generate/send endpoints into 501. Status changes and signatures work regardless.
+- **"Creation date" = detection time, never `createdon`.** Dataverse's `createdon` is only the
+  sync/import time (a re-sync makes months-old anomalies look new). The detection timestamp
+  lives in `cr062_created_at` (synced from `dbo.anomalies.created_at`; backfilled 2026-07-10) —
+  lists sort by it and the UI shows it (`detectedAt`, falling back to `createdOn` when null).
+  `cr062_order_number` (BE… order, all four models) and `cr062_transaction_type` ("11"
+  Materialbestellung / "1" Sachkontobestellung) are mapped in the nightly
+  `Anomalie_TransferSQL_Dataverse` flow, but the source SQL columns don't exist yet — values
+  stay NULL until the backend team ships them.
+- **UI action labels ≠ status values.** The action "Erledigt" (formerly "Abbrechen") still sets
+  status `abgebrochen`; "Bearbeitung" sets `in Bearbeitung`. Only the labels changed
+  (client 2026-07-10).
 - **Untrain ≠ cancel.** Untrain sets status `Abtrainiert` AND inserts a row into
   `at_abtrainierteanomaliens` (the table the pipeline reads to suppress patterns); retrain
   deletes the matching rows again. Cancel sets status `abgebrochen` with no ML side-effects.

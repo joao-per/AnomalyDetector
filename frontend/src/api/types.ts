@@ -52,6 +52,10 @@ export interface Anomaly {
 
   // order / article
   orderId: string | null;
+  /** BE… purchase order (dbo.anomalies.order_number) — NULL on old rows. */
+  orderNumber: string | null;
+  /** "11" = Materialbestellung, "1" = Sachkontobestellung, else hidden. */
+  transactionType: string | null;
   navOrderLink: string | null;
   articleId: string | null;
   articleCategory: string | null;
@@ -67,6 +71,8 @@ export interface Anomaly {
   changeHistory: string | null;
 
   // system
+  /** Detection timestamp (SQL created_at). createdOn is only the sync time. */
+  detectedAt: string | null;
   createdOn: string | null;
   modifiedOn: string | null;
 }

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { Anomaly } from "@/api/types";
+import { useDeleteAnomalies } from "@/api/hooks";
 import { compareAnomalieId, dash, formatDate, isHighCriticality } from "@/lib/format";
 import { useI18n } from "@/i18n/i18n";
 import type { TranslationKey } from "@/i18n/translations";
@@ -8,7 +9,7 @@ import { StatusBadge } from "./StatusBadge";
 import { SupplierAvatar } from "./SupplierAvatar";
 import { HistoryModal } from "./HistoryModal";
 import { ExplainModal } from "./ExplainModal";
-import { ChevronDownIcon, HistoryIcon, SparklesIcon } from "./icons";
+import { ChevronDownIcon, HistoryIcon, SparklesIcon, TrashIcon } from "./icons";
 import navLogo from "@/assets/dynamics-nav.png";
 
 export type SortKey =
@@ -19,7 +20,8 @@ export type SortKey =
   | "status"
   | "besteller"
   | "criticality"
-  | "createdOn";
+  | "orderNumber"
+  | "detectedAt";
 
 export interface SortState {
   key: SortKey;
@@ -35,6 +37,13 @@ interface Column {
   render: (a: Anomaly) => ReactNode;
   sortValue: (a: Anomaly) => string | number | null;
   cellClass?: (a: Anomaly) => string;
+}
+
+/** The user-facing "creation date" is the DETECTION time (SQL created_at).
+ *  Dataverse's createdon is only the sync time — a re-sync would make
+ *  months-old anomalies look brand new. Fallback keeps unsynced rows sane. */
+function detectionDate(a: Anomaly): string | null {
+  return a.detectedAt ?? a.createdOn;
 }
 
 const COLUMNS: Column[] = [
@@ -77,17 +86,31 @@ const COLUMNS: Column[] = [
     cellClass: (a) => (isHighCriticality(a.criticalityClass) ? "font-semibold text-brand" : ""),
   },
   {
-    key: "createdOn",
+    key: "orderNumber",
+    labelKey: "common.orderNumber",
+    kind: "str",
+    render: (a) => dash(a.orderNumber),
+    sortValue: (a) => a.orderNumber ?? "",
+    cellClass: () => "tabular-nums",
+  },
+  {
+    key: "detectedAt",
     labelKey: "common.createdAt",
     kind: "num", // sorted by timestamp
-    render: (a) => formatDate(a.createdOn),
-    sortValue: (a) => (a.createdOn ? Date.parse(a.createdOn) : -Infinity),
+    render: (a) => formatDate(detectionDate(a)),
+    sortValue: (a) => {
+      const d = detectionDate(a);
+      return d ? Date.parse(d) : -Infinity;
+    },
     cellClass: () => "tabular-nums",
   },
 ];
 
+export const SORT_KEYS: readonly SortKey[] = COLUMNS.map((c) => c.key);
+
+// checkbox | data columns | actions
 const GRID =
-  "grid grid-cols-[1fr_1.35fr_1.3fr_1fr_1.1fr_1.15fr_0.85fr_1fr_10rem] gap-3 items-center";
+  "grid grid-cols-[1.1rem_1fr_1.3fr_1.25fr_1fr_1.05fr_1.1fr_0.85fr_0.95fr_0.95fr_10rem] gap-3 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
@@ -123,10 +146,38 @@ export function AnomalyTable({
   const { t } = useI18n();
   const [historyFor, setHistoryFor] = useState<Anomaly | null>(null);
   const [explainFor, setExplainFor] = useState<Anomaly | null>(null);
+
+  // Multi-select for the permanent-delete flow. Only ids still visible count —
+  // rows filtered away (or already deleted) drop out automatically.
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const checkedVisible = anomalies.filter((a) => checkedIds.has(a.id));
+  const allChecked = anomalies.length > 0 && checkedVisible.length === anomalies.length;
+
+  function toggleOne(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleAll() {
+    setCheckedIds(allChecked ? new Set() : new Set(anomalies.map((a) => a.id)));
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-lg">
       {/* Header — blood red, bold white, click any column to sort (toggles direction) */}
       <div className={`${GRID} bg-brand-dark px-7 py-3.5`}>
+        <input
+          type="checkbox"
+          checked={allChecked}
+          onChange={toggleAll}
+          title={t("table.selectAll")}
+          aria-label={t("table.selectAll")}
+          className="h-4 w-4 cursor-pointer accent-white"
+        />
         {COLUMNS.map((col) => {
           const active = sort.key === col.key;
           const label = t(col.labelKey);
@@ -186,6 +237,15 @@ export function AnomalyTable({
                       ? "bg-surface hover:bg-red-50/60"
                       : "bg-white hover:bg-red-50/60"}`}
               >
+                <input
+                  type="checkbox"
+                  checked={checkedIds.has(a.id)}
+                  onChange={() => toggleOne(a.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  title={t("table.selectRow", { id: a.anomalieId ?? "" })}
+                  aria-label={t("table.selectRow", { id: a.anomalieId ?? "" })}
+                  className="h-4 w-4 cursor-pointer accent-brand"
+                />
                 {COLUMNS.map((col) => (
                   <Cell key={col.key} className={col.cellClass?.(a) ?? ""}>
                     {col.render(a)}
@@ -201,12 +261,146 @@ export function AnomalyTable({
           })}
       </div>
 
+      {/* Delete bar — appears while rows are selected */}
+      {checkedVisible.length > 0 && (
+        <div className="flex items-center justify-between gap-3 border-t border-line bg-rose-50/70 px-7 py-2.5">
+          <span className="text-sm font-semibold text-ink">
+            {t("delete.selected", { n: checkedVisible.length })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-sm
+                       font-semibold text-white shadow-sm transition hover:bg-rose-700"
+          >
+            <TrashIcon className="h-4 w-4" />
+            {t("delete.button")}
+          </button>
+        </div>
+      )}
+
       {historyFor && (
         <HistoryModal anomaly={historyFor} onClose={() => setHistoryFor(null)} />
       )}
       {explainFor && (
         <ExplainModal anomaly={explainFor} onClose={() => setExplainFor(null)} />
       )}
+      {confirmOpen && (
+        <DeleteConfirmModal
+          targets={checkedVisible}
+          onDone={(remaining) => {
+            setCheckedIds(new Set(remaining));
+            setConfirmOpen(false);
+          }}
+          onClose={() => setConfirmOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Confirmation for the PERMANENT Dataverse delete. Also the cleanup path for
+ *  orphaned records whose source row no longer exists in SQL. */
+function DeleteConfirmModal({
+  targets,
+  onDone,
+  onClose,
+}: {
+  targets: Anomaly[];
+  /** Called after deleting; receives the ids that could NOT be deleted. */
+  onDone: (remainingIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const del = useDeleteAnomalies();
+  const [failedMsg, setFailedMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !del.isPending) onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [del.isPending, onClose]);
+
+  function run() {
+    setFailedMsg(null);
+    del.mutate(
+      targets.map((a) => a.id),
+      {
+        onSuccess: (failed) => {
+          if (failed.length === 0) {
+            onDone([]);
+          } else {
+            setFailedMsg(t("delete.failed", { n: failed.length, total: targets.length }));
+            onDone(failed);
+          }
+        },
+      },
+    );
+  }
+
+  const ids = targets
+    .map((a) => a.anomalieId)
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(", ");
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={() => !del.isPending && onClose()}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={t("delete.title")}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10"
+      >
+        <div className="flex items-center gap-3 bg-rose-600 px-5 py-4 text-white">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20">
+            <TrashIcon className="h-4.5 w-4.5" />
+          </span>
+          <h2 className="text-base font-bold">{t("delete.title")}</h2>
+        </div>
+        <div className="space-y-2 px-5 py-4">
+          <p className="text-sm text-ink">
+            {t("delete.message", { n: targets.length })}
+          </p>
+          {ids && (
+            <p className="text-xs text-muted">
+              {ids}
+              {targets.length > 8 ? ", …" : ""}
+            </p>
+          )}
+          {failedMsg && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+              {failedMsg}
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={del.isPending}
+            className="rounded-xl px-4 py-2 text-sm font-medium text-muted transition hover:text-ink
+                       disabled:opacity-50"
+          >
+            {t("delete.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={run}
+            disabled={del.isPending}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm
+                       transition hover:bg-rose-700 disabled:cursor-wait disabled:opacity-70"
+          >
+            {del.isPending ? t("delete.working") : t("delete.confirm")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

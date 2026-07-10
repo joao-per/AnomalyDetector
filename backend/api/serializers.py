@@ -85,6 +85,8 @@ def map_anomaly(record: dict) -> dict:
         "besteller": g(a["besteller"]),
         # order / article
         "orderId": g(a["order_id"]),
+        "orderNumber": g(a["order_number"]),
+        "transactionType": g(a["transaction_type"]),
         "navOrderLink": g(a["nav_order_link"]),
         "articleId": g(a["article_id"]),
         "articleCategory": g(a["article_category"]),
@@ -97,6 +99,7 @@ def map_anomaly(record: dict) -> dict:
         "commentAcceptance": g(a["comment_acceptance"]),
         "changeHistory": g(a["change_history"]),
         # system
+        "detectedAt": g(a["detected_at"]),
         "createdOn": g(a["created_on"]),
         "modifiedOn": g(a["modified_on"]),
     }
@@ -118,10 +121,11 @@ def anomaly_select() -> list[str]:
         "test_image_url",
         "owner", "vendor_name", "vendor_email", "vendor_phone", "supplier_id",
         "besteller_email", "besteller",
-        "order_id", "nav_order_link", "article_id", "article_category", "article_name",
+        "order_id", "order_number", "transaction_type",
+        "nav_order_link", "article_id", "article_category", "article_name",
         "draft_vendor", "draft_internal",
         "comment_done", "comment_acceptance", "change_history",
-        "created_on", "modified_on",
+        "detected_at", "created_on", "modified_on",
     ]
     return [a[k] for k in keys]
 

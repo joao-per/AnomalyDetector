@@ -26,6 +26,9 @@ export const anomaliesApi = {
 
   retrain: (guid: string) => api.post<Anomaly>(`anomalies/${guid}/retrain/`),
 
+  /** PERMANENT Dataverse delete — the UI confirms before calling this. */
+  remove: (guid: string) => api.delete(`anomalies/${guid}/`),
+
   /** "Erklär mal" — AI explanation of the anomaly's plot image. */
   explain: (guid: string) =>
     api.post<{ answer: string | null; raw: unknown }>(`anomalies/${guid}/explain/`),

@@ -1,11 +1,20 @@
 import { useI18n } from "@/i18n/i18n";
 import { ChevronDownIcon } from "./icons";
 
+export interface FilterOption {
+  value: string;
+  /** Display text — may differ from the stored value (e.g. Prozessbezug
+   *  "Bestellkopf" shown as "Bestellung (Kopf)"). */
+  label: string;
+}
+
 export interface FilterDef {
   key: string;
   label: string;
-  options: string[];
   value: string;
+  /** "select" (default) = dropdown of options; "text" = free substring search. */
+  type?: "select" | "text";
+  options?: FilterOption[];
 }
 
 interface FilterBarProps {
@@ -26,9 +35,13 @@ export function FilterBar({
   const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-white/95 px-5 py-4 shadow-lg backdrop-blur">
-      {filters.map((f) => (
-        <Dropdown key={f.key} def={f} onChange={(v) => onChange(f.key, v)} />
-      ))}
+      {filters.map((f) =>
+        f.type === "text" ? (
+          <TextFilter key={f.key} def={f} onChange={(v) => onChange(f.key, v)} />
+        ) : (
+          <Dropdown key={f.key} def={f} onChange={(v) => onChange(f.key, v)} />
+        ),
+      )}
 
       <div className="ml-auto flex items-center gap-3">
         <button
@@ -69,13 +82,33 @@ function Dropdown({
                     ${def.value ? "text-ink" : "text-muted"}`}
       >
         <option value="">{def.label}</option>
-        {def.options.map((o) => (
-          <option key={o} value={o} className="text-ink">
-            {o}
+        {(def.options ?? []).map((o) => (
+          <option key={o.value} value={o.value} className="text-ink">
+            {o.label}
           </option>
         ))}
       </select>
       <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
     </div>
+  );
+}
+
+function TextFilter({
+  def,
+  onChange,
+}: {
+  def: FilterDef;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="search"
+      value={def.value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={def.label}
+      aria-label={def.label}
+      className="w-[150px] rounded-xl border border-line bg-white py-2.5 px-4 text-sm text-ink
+                 shadow-sm outline-none transition placeholder:text-muted focus:border-brand"
+    />
   );
 }
