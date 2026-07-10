@@ -87,7 +87,7 @@ const COLUMNS: Column[] = [
   },
   {
     key: "orderNumber",
-    labelKey: "common.orderNumber",
+    labelKey: "common.orderNo",
     kind: "str",
     render: (a) => dash(a.orderNumber),
     sortValue: (a) => a.orderNumber ?? "",
@@ -110,7 +110,7 @@ export const SORT_KEYS: readonly SortKey[] = COLUMNS.map((c) => c.key);
 
 // checkbox | data columns | actions
 const GRID =
-  "grid grid-cols-[1.1rem_1fr_1.3fr_1.25fr_1fr_1.05fr_1.1fr_0.85fr_0.95fr_0.95fr_10rem] gap-3 items-center";
+  "grid grid-cols-[1.1rem_1fr_1.3fr_1.25fr_1fr_1.05fr_1.1fr_0.85fr_0.95fr_1fr_9rem] gap-2 items-center";
 
 /** Comparator driven by the active sort column + direction. */
 export function compareAnomalies(a: Anomaly, b: Anomaly, sort: SortState): number {
@@ -169,7 +169,7 @@ export function AnomalyTable({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-white shadow-lg">
       {/* Header — blood red, bold white, click any column to sort (toggles direction) */}
-      <div className={`${GRID} bg-brand-dark px-7 py-3.5`}>
+      <div className={`${GRID} bg-brand-dark px-5 py-3.5`}>
         <input
           type="checkbox"
           checked={allChecked}
@@ -230,7 +230,7 @@ export function AnomalyTable({
                     onSelect(a);
                   }
                 }}
-                className={`${GRID} w-full cursor-pointer px-7 py-4 text-sm transition
+                className={`${GRID} w-full cursor-pointer px-5 py-4 text-sm transition
                   ${selected
                     ? "bg-red-50 ring-1 ring-inset ring-brand/30"
                     : i % 2 === 1
